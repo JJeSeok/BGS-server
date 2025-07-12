@@ -1,0 +1,32 @@
+{
+  "name": "bgs",
+  "version": "1.0.0",
+  "description": "restaurant recommend",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JJeSeok/BGS-server.git"
+  },
+  "author": "Jaeseok",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JJeSeok/BGS-server/issues"
+  },
+  "homepage": "https://github.com/JJeSeok/BGS-server#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
