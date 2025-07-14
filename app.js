@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import helmet from 'helmet';
 import 'express-async-errors';
 import restaurantsRouter from './router/restaurants.js';
+import userRouter from './router/users.js';
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(morgan('tiny'));
 
 app.use('/restaurants', restaurantsRouter);
+app.use('/users', userRouter);
 
 app.use((req, res, next) => {
   res.sendStatus(404);
