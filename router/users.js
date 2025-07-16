@@ -1,12 +1,11 @@
 import express from 'express';
 import 'express-async-errors';
+import * as userController from '../controller/user.js';
 import { body } from 'express-validator';
-import { validate } from '../middleware/validator';
+import { validate } from '../middleware/validator.js';
 
 const router = express.Router();
 
-// TODO 유효성 검사 하나하나 확인해보기
-// 특수문자 확인
 const validateCredential = [
   body('username')
     .trim()
@@ -26,7 +25,7 @@ const validateCredential = [
     .withMessage('알파벳을 하나 이상 포함해야 합니다.')
     .matches(/\d/)
     .withMessage('숫자를 하나 이상 포함해야 합니다.')
-    .matches(/[!@#$%^&*()_\-=+\\|[\]{};:'",.<>\/?]/) // 특수문자 제대로 작성했는지 확인해보기
+    .matches(/[!@#$%^&*()_\-=+\\|[\]{};:'",.<>\/?]/)
     .withMessage('특수문자를 하나 이상 포함해야 합니다.'),
   validate,
 ];
@@ -63,3 +62,11 @@ const validateSignup = [
     .customSanitizer((value) => value.replace(/-/g, '')),
   validate,
 ];
+
+// POST /users/signup
+router.post('/signup', validateSignup, userController.signup);
+
+// POST /users/login
+router.post('/login', validateCredential, userController.login);
+
+export default router;
