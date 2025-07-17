@@ -3,6 +3,7 @@ import 'express-async-errors';
 import * as userController from '../controller/user.js';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validator.js';
+import { isAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -68,5 +69,8 @@ router.post('/signup', validateSignup, userController.signup);
 
 // POST /users/login
 router.post('/login', validateCredential, userController.login);
+
+// GET /users/me
+router.get('/me', isAuth, userController.me);
 
 export default router;

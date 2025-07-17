@@ -67,3 +67,11 @@ function createJwtToken(id) {
     expiresIn: config.jwt.expiresInSec,
   });
 }
+
+export async function me(req, res) {
+  const user = await userRepository.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  res.status(200).json({ token: req.token, username: user.username }); // token을 사용하는지 username이 아닌 다른 정보가 필요한지 확인하기
+}
