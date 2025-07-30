@@ -54,6 +54,7 @@ const validateSignup = [
     .notEmpty()
     .withMessage('이메일을 입력하세요.')
     .isEmail()
+    .withMessage('올바른 이메일 형식이 아닙니다.')
     .normalizeEmail(),
   body('phone')
     .notEmpty()

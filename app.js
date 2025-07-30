@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import 'express-async-errors';
 import restaurantsRouter from './router/restaurants.js';
 import userRouter from './router/users.js';
+import { sequelize } from './db/database.js';
+import { config } from './config.js';
 
 const app = express();
 
@@ -25,4 +27,7 @@ app.use((error, req, res, next) => {
   res.sendStatus(500);
 });
 
-app.listen(8080);
+sequelize.sync().then(() => {
+  console.log(`Server is started... ${new Date()}`);
+  app.listen(config.port);
+});
