@@ -1,52 +1,59 @@
-let restaurants = [
-  {
-    id: '1',
-    name: '천원국수',
-    time: '10:00 ~ 21:00',
-    number: '041-532-0969',
-    type: '분식',
+import { DataTypes } from 'sequelize';
+import { sequelize } from '../db/database.js';
+
+const Restaurant = sequelize.define('restaurant', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    allowNull: false,
   },
-  {
-    id: '2',
-    name: '버거운버거',
-    time: '10:00 ~ 22:00',
-    number: '0507-1470-9286',
-    type: '햄버거',
+  name: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
   },
-];
+  openingTime: {
+    type: DataTypes.TIME,
+    allowNull: false,
+  },
+  closingTime: {
+    type: DataTypes.TIME,
+    allowNull: false,
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  type: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+  },
+});
 
 export async function getAllRestaurants() {
-  return restaurants;
+  return Restaurant.findAll();
 }
 
 export async function getRestaurantById(id) {
-  return restaurants.find((restaurant) => restaurant.id === id);
+  return Restaurant.findByPk(id);
 }
 
-export async function create(name, time, number, type) {
-  const restaurant = {
-    id: restaurants.length + 1,
+export async function create(name, openingTime, closingTime, phone, type) {
+  return Restaurant.create({
     name,
-    time,
-    number,
+    openingTime,
+    closingTime,
+    phone,
     type,
-  };
-  restaurants.push(restaurant);
-
-  return restaurant;
+  }).then((data) => getRestaurantById(data.dataValues.id));
 }
 
 export async function update(id, updateData) {
-  const restaurant = restaurants.find((restaurant) => restaurant.id === id);
-  Object.entries(updateData).forEach(([key, value]) => {
-    if (value !== undefined) {
-      restaurant[key] = value;
-    }
-  });
-
-  return restaurant;
+  return Restaurant.findByPk(id) //
+    .then((restaurant) => restaurant.update(updateData));
 }
 
 export async function remove(id) {
-  restaurants = restaurants.filter((restaurant) => restaurant.id !== id);
+  return Restaurant.findByPk(id) //
+    .then((restaurant) => restaurant.destroy());
 }

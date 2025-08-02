@@ -17,11 +17,12 @@ export async function getRestaurant(req, res) {
 }
 
 export async function createRestaurant(req, res) {
-  const { name, time, number, type } = req.body;
+  const { name, openingTime, closingTime, phone, type } = req.body;
   const restaurant = await restaurantRepository.create(
     name,
-    time,
-    number,
+    openingTime,
+    closingTime,
+    phone,
     type
   );
 
@@ -35,6 +36,7 @@ export async function updateRestaurant(req, res) {
   if (!restaurant) {
     return res.sendStatus(404);
   }
+  console.log(updateData);
 
   const updated = await restaurantRepository.update(restaurantId, updateData);
   res.status(200).json(updated);
