@@ -34,6 +34,7 @@ const validateCredential = [
 const validateSignup = [
   ...validateCredential,
   body('name')
+    .trim()
     .notEmpty()
     .withMessage('이름을 입력하세요.')
     .matches(/^[가-힣a-zA-Z]{2,}$/)
@@ -51,12 +52,14 @@ const validateSignup = [
     }),
   body('gender').notEmpty().withMessage('성별을 선택하세요.'),
   body('email')
+    .trim()
     .notEmpty()
     .withMessage('이메일을 입력하세요.')
     .isEmail()
     .withMessage('올바른 이메일 형식이 아닙니다.')
     .normalizeEmail(),
   body('phone')
+    .trim()
     .notEmpty()
     .withMessage('전화번호를 입력하세요.')
     .isMobilePhone('ko-KR')

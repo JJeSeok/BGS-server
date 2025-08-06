@@ -4,31 +4,25 @@ import * as userRepository from '../data/user.js';
 import { config } from '../config.js';
 
 export async function signup(req, res) {
-  const {
-    username,
-    password,
-    confirmPassword,
-    name,
-    birth,
-    gender,
-    email,
-    phone,
-  } = req.body;
-  if (password !== confirmPassword) {
-    return res.status(400).json({ message: 'Passwords do not match.' });
-  }
+  const { username, password, name, birth, gender, email, phone } = req.body;
 
   const foundUsername = await userRepository.findByUsername(username);
   if (foundUsername) {
-    return res.status(409).json({ message: `${username} already exists` });
+    return res
+      .status(409)
+      .json({ field: 'username', message: '아이디가 이미 존재합니다.' });
   }
   const foundEmail = await userRepository.findByEmail(email);
   if (foundEmail) {
-    return res.status(409).json({ message: `${email} already exists` });
+    return res
+      .status(409)
+      .json({ field: 'email', message: '이메일이 이미 존재합니다.' });
   }
   const foundPhone = await userRepository.findByPhone(phone);
   if (foundPhone) {
-    return res.status(409).json({ message: `${phone} already exists` });
+    return res
+      .status(409)
+      .json({ field: 'phone', message: '전화번호가 이미 존재합니다.' });
   }
 
   const hashed = await bcrypt.hash(password, config.bcrypt.saltRounds);
