@@ -44,12 +44,16 @@ export async function login(req, res) {
   const { username, password } = req.body;
   const user = await userRepository.findByUsername(username);
   if (!user) {
-    return res.status(401).json({ message: 'Invalid user or password' });
+    return res
+      .status(401)
+      .json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
 
   const isValidPassword = await bcrypt.compare(password, user.password);
   if (!isValidPassword) {
-    return res.status(401).json({ message: 'Invalid user or password' });
+    return res
+      .status(401)
+      .json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
 
   const token = createJwtToken(user.id);
