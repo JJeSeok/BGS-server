@@ -68,11 +68,59 @@ const validateSignup = [
   validate,
 ];
 
+const validateForgotIdPhone = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('이름을 입력하세요.')
+    .matches(/^[가-힣a-zA-Z]{2,}$/)
+    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+  body('phone')
+    .trim()
+    .notEmpty()
+    .withMessage('전화번호를 입력하세요.')
+    .isMobilePhone('ko-KR')
+    .withMessage('올바른 휴대폰 번호 형식이 아닙니다.')
+    .customSanitizer((value) => value.replace(/-/g, '')),
+  validate,
+];
+
+const validateForgotIdEmail = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('이름을 입력하세요.')
+    .matches(/^[가-힣a-zA-Z]{2,}$/)
+    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('이메일을 입력하세요.')
+    .isEmail()
+    .withMessage('올바른 이메일 형식이 아닙니다.')
+    .normalizeEmail(),
+  validate,
+];
+
 // POST /users/signup
 router.post('/signup', validateSignup, userController.signup);
 
 // POST /users/login
 router.post('/login', validateCredential, userController.login);
+
+// POST /users/forgotId-phone
+router.post(
+  '/forgotId-phone',
+  validateForgotIdPhone,
+  userController.forgotId_phone
+);
+
+// POST /users/forgotId-email
+router.post(
+  '/forgotId-email',
+  validateForgotIdEmail,
+  userController.forgotId_email
+);
 
 // GET /users/me
 router.get('/me', isAuth, userController.me);

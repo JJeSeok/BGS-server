@@ -66,6 +66,30 @@ function createJwtToken(id) {
   });
 }
 
+export async function forgotId_phone(req, res) {
+  const { name, phone } = req.body;
+  const user = await userRepository.findByPhone(phone);
+  if (!user || user.name !== name) {
+    return res
+      .status(401)
+      .json({ message: '가입 시 입력하신 회원 정보가 맞는지 확인해 주세요.' });
+  }
+
+  res.status(200).json({ username: user.username });
+}
+
+export async function forgotId_email(req, res) {
+  const { name, email } = req.body;
+  const user = await userRepository.findByEmail(email);
+  if (!user || user.name !== name) {
+    return res
+      .status(401)
+      .json({ message: '가입 시 입력하신 회원 정보가 맞는지 확인해 주세요.' });
+  }
+
+  res.status(200).json({ username: user.username });
+}
+
 export async function me(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) {
