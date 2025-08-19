@@ -125,6 +125,9 @@ router.post(
 // POST /users/forgotPassword/request
 router.post('/forgotPassword/request', userController.forgotPasswordRequest);
 
+// POST /users/forgotPassword/verify
+router.post('/forgotPassword/verify', userController.forgotPasswordVerify);
+
 // GET /users/me
 router.get('/me', isAuth, userController.me);
 

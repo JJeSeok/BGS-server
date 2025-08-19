@@ -68,3 +68,18 @@ export const PasswordReset = sequelize.define(
 export async function create(info) {
   return PasswordReset.create(info);
 }
+
+export async function getCodeInfo(email) {
+  return PasswordReset.findOne({
+    where: { email, usedAt: null },
+    order: [['createdAt', 'DESC']],
+  });
+}
+
+export async function decreaseAttempt(pr) {
+  return pr.update({ attemptsLeft: pr.attemptsLeft - 1 });
+}
+
+export async function setResetToken(pr, updateData) {
+  return pr.update({ ...updateData });
+}

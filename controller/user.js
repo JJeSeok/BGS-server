@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import * as userRepository from '../data/user.js';
 import * as pwResetRepository from '../data/passwordReset.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
@@ -98,8 +99,8 @@ export async function forgotPasswordRequest(req, res) {
   const user = await userRepository.findByEmail(email);
   if (!user || user.username !== username) {
     return res
-      .status(200)
-      .json({ message: '이메일을 보냈어요. 인증코드를 확인하세요.' });
+      .status(401)
+      .json({ message: '가입 시 입력하신 회원 정보가 맞는지 확인해 주세요.' });
   }
 
   const code = genCode();
@@ -128,6 +129,30 @@ export async function forgotPasswordRequest(req, res) {
   return res
     .status(200)
     .json({ message: '이메일을 보냈어요. 인증코드를 확인하세요.' });
+}
+
+export async function forgotPasswordVerify(req, res) {
+  const { email, code } = req.body;
+  const pr = await pwResetRepository.getCodeInfo(email);
+  if (!pr || pr.expiresAt < new Date() || pr.attemptsLeft <= 0) {
+    return res.status(400).json({ message: '코드가 유효하지 않습니다.' });
+  }
+
+  if (hashCode(code, pr.salt) !== pr.codeHash) {
+    await pwResetRepository.decreaseAttempt(pr);
+    return res.status(400).json({ message: '코드가 유효하지 않습니다.' });
+  }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetExp = new Date(Date.now() + 15 * 60 * 1000);
+  await pwResetRepository.setResetToken(pr, {
+    usedAt: new Date(),
+    resetToken,
+    resetExp,
+  });
+  console.log(pr);
+
+  return res.json({ resetToken });
 }
 
 export async function me(req, res) {
