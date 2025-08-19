@@ -24,4 +24,9 @@ export const config = {
     password: required('DB_PASSWORD'),
   },
   port: parseInt(required('PORT', 8080)),
+  mailer: {
+    user: required('MAIL_USER'),
+    password: required('MAIL_APP_PASSWORD'),
+    appName: required('APP_NAME'),
+  },
 };
