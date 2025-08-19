@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import * as userRepository from '../data/user.js';
+import * as pwResetRepository from '../data/passwordReset.js';
+import { genCode, genSalt, hashCode } from '../utils/otp.js';
+import { sendMail } from '../utils/mailer.js';
 import { config } from '../config.js';
 
 export async function signup(req, res) {
@@ -88,6 +91,43 @@ export async function forgotId_email(req, res) {
   }
 
   res.status(200).json({ username: user.username });
+}
+
+export async function forgotPasswordRequest(req, res) {
+  const { username, email } = req.body;
+  const user = await userRepository.findByEmail(email);
+  if (!user || user.username !== username) {
+    return res
+      .status(200)
+      .json({ message: '이메일을 보냈어요. 인증코드를 확인하세요.' });
+  }
+
+  const code = genCode();
+  const salt = genSalt();
+  const codeHash = hashCode(code, salt);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await pwResetRepository.create({
+    username,
+    email,
+    codeHash,
+    salt,
+    expiresAt,
+    attemptsLeft: 5,
+    ip: req.ip,
+    ua: req.headers['user-agent'],
+  });
+
+  await sendMail({
+    to: email,
+    subject: `[${config.mailer.appName}] 비밀번호 재설정 인증코드`,
+    text: `${config.mailer.appName} 인증코드: ${code} (10분 이내 입력)`,
+    html: `<p>인증코드: <b>${code}</b></p> <p>(10분 이내 입력하세요.)</p>`,
+  });
+
+  return res
+    .status(200)
+    .json({ message: '이메일을 보냈어요. 인증코드를 확인하세요.' });
 }
 
 export async function me(req, res) {

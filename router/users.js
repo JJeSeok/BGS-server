@@ -122,6 +122,9 @@ router.post(
   userController.forgotId_email
 );
 
+// POST /users/forgotPassword/request
+router.post('/forgotPassword/request', userController.forgotPasswordRequest);
+
 // GET /users/me
 router.get('/me', isAuth, userController.me);
 
