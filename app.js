@@ -6,6 +6,7 @@ import 'express-async-errors';
 import restaurantsRouter from './router/restaurants.js';
 import userRouter from './router/users.js';
 import { sequelize } from './db/database.js';
+import { scheduleCleanup } from './jobs/cleanupPasswordResets.js';
 import { config } from './config.js';
 
 const app = express();
@@ -26,6 +27,8 @@ app.use((error, req, res, next) => {
   console.error(error);
   res.sendStatus(500);
 });
+
+scheduleCleanup();
 
 sequelize.sync().then(() => {
   console.log(`Server is started... ${new Date()}`);

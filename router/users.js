@@ -4,6 +4,7 @@ import * as userController from '../controller/user.js';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validator.js';
 import { isAuth } from '../middleware/auth.js';
+import { pwdLimiter } from '../middleware/rate-limiter.js';
 
 const router = express.Router();
 
@@ -123,13 +124,25 @@ router.post(
 );
 
 // POST /users/forgotPassword/request
-router.post('/forgotPassword/request', userController.forgotPasswordRequest);
+router.post(
+  '/forgotPassword/request',
+  pwdLimiter,
+  userController.forgotPasswordRequest
+);
 
 // POST /users/forgotPassword/verify
-router.post('/forgotPassword/verify', userController.forgotPasswordVerify);
+router.post(
+  '/forgotPassword/verify',
+  pwdLimiter,
+  userController.forgotPasswordVerify
+);
 
 // POST /users/forgotPassword/reset
-router.post('/forgotPassword/reset', userController.forgotPasswordReset);
+router.post(
+  '/forgotPassword/reset',
+  pwdLimiter,
+  userController.forgotPasswordReset
+);
 
 // GET /users/me
 router.get('/me', isAuth, userController.me);

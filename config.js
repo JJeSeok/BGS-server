@@ -29,4 +29,8 @@ export const config = {
     password: required('MAIL_APP_PASSWORD'),
     appName: required('APP_NAME'),
   },
+  rateLimit: {
+    windowMs: 5 * 60 * 1000,
+    limit: 5,
+  },
 };

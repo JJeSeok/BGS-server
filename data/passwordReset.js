@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const PasswordReset = sequelize.define(
@@ -90,4 +90,16 @@ export async function getResetToken(resetToken) {
 
 export async function deleteToken(pr, deleteDate) {
   return pr.update({ ...deleteDate });
+}
+
+export async function remove(graceCutoff, now, usedCutoff) {
+  return PasswordReset.destroy({
+    where: {
+      [Op.or]: [
+        { expiresAt: { [Op.lt]: graceCutoff } },
+        { resetExp: { [Op.lt]: now } },
+        { usedAt: { [Op.lt]: usedCutoff } },
+      ],
+    },
+  });
 }
