@@ -86,3 +86,7 @@ export async function findByPhone(phone) {
 export async function findById(id) {
   return User.findByPk(id);
 }
+
+export async function updatePassword(user, password) {
+  return user.update(password);
+}

@@ -150,9 +150,23 @@ export async function forgotPasswordVerify(req, res) {
     resetToken,
     resetExp,
   });
-  console.log(pr);
 
   return res.json({ resetToken });
+}
+
+export async function forgotPasswordReset(req, res) {
+  const { resetToken, newPassword } = req.body;
+  const pr = await pwResetRepository.getResetToken(resetToken);
+  if (!pr || pr.resetExp < new Date()) {
+    return res.status(400).json({ message: '토큰이 유효하지 않습니다.' });
+  }
+
+  const user = await userRepository.findByUsername(pr.username);
+  const hashed = await bcrypt.hash(newPassword, config.bcrypt.saltRounds);
+  await userRepository.updatePassword(user, { password: hashed });
+  await pwResetRepository.deleteToken(pr, { resetToken: null, resetExp: null });
+
+  return res.status(200).json({ message: '비밀번호가 재설정되었습니다.' });
 }
 
 export async function me(req, res) {

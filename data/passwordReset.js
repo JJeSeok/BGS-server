@@ -83,3 +83,11 @@ export async function decreaseAttempt(pr) {
 export async function setResetToken(pr, updateData) {
   return pr.update({ ...updateData });
 }
+
+export async function getResetToken(resetToken) {
+  return PasswordReset.findOne({ where: { resetToken } });
+}
+
+export async function deleteToken(pr, deleteDate) {
+  return pr.update({ ...deleteDate });
+}
