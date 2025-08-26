@@ -103,6 +103,66 @@ const validateForgotIdEmail = [
   validate,
 ];
 
+const validateForgotPwRequest = [
+  body('username')
+    .trim()
+    .notEmpty()
+    .withMessage('아이디를 입력하세요.')
+    .isAlphanumeric()
+    .withMessage('아이디는 영문자와 숫자만 사용 가능합니다.')
+    .isLength({ min: 4, max: 20 })
+    .withMessage('아이디는 4~20자여야 합니다.'),
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('이메일을 입력하세요.')
+    .isEmail()
+    .withMessage('올바른 이메일 형식이 아닙니다.')
+    .normalizeEmail(),
+  validate,
+];
+
+const validateForgotPwVerify = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('이메일을 입력하세요.')
+    .isEmail()
+    .withMessage('올바른 이메일 형식이 아닙니다.')
+    .normalizeEmail(),
+  body('code')
+    .trim()
+    .notEmpty()
+    .withMessage('인증코드를 입력하세요.')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('인증코드가 올바르지 않습니다.')
+    .matches(/^\d{6}$/)
+    .withMessage('코드는 숫자만 입력하세요.'),
+  validate,
+];
+
+const validateForgotPwReset = [
+  body('resetToken')
+    .trim()
+    .notEmpty()
+    .withMessage('토큰이 누락되었습니다.')
+    .isLength({ min: 64 })
+    .withMessage('토큰 형식이 올바르지 않습니다.'),
+  body('newPassword')
+    .trim()
+    .notEmpty()
+    .withMessage('비밀번호를 입력하세요.')
+    .isLength({ min: 8 })
+    .withMessage('비밀번호는 최소 8자 이상이어야 합니다.')
+    .matches(/[a-z]/i)
+    .withMessage('알파벳을 하나 이상 포함해야 합니다.')
+    .matches(/\d/)
+    .withMessage('숫자를 하나 이상 포함해야 합니다.')
+    .matches(/[!@#$%^&*()_\-=+\\|[\]{};:'",.<>\/?]/)
+    .withMessage('특수문자를 하나 이상 포함해야 합니다.'),
+  validate,
+];
+
 // POST /users/signup
 router.post('/signup', validateSignup, userController.signup);
 
@@ -127,6 +187,7 @@ router.post(
 router.post(
   '/forgotPassword/request',
   pwdLimiter,
+  validateForgotPwRequest,
   userController.forgotPasswordRequest
 );
 
@@ -134,6 +195,7 @@ router.post(
 router.post(
   '/forgotPassword/verify',
   pwdLimiter,
+  validateForgotPwVerify,
   userController.forgotPasswordVerify
 );
 
@@ -141,6 +203,7 @@ router.post(
 router.post(
   '/forgotPassword/reset',
   pwdLimiter,
+  validateForgotPwReset,
   userController.forgotPasswordReset
 );
 
