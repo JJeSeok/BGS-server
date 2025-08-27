@@ -162,6 +162,13 @@ export async function forgotPasswordReset(req, res) {
   }
 
   const user = await userRepository.findByUsername(pr.username);
+  const isValidPassword = await bcrypt.compare(newPassword, user.password);
+  if (isValidPassword) {
+    return res
+      .status(400)
+      .json({ message: '이전 비밀번호를 그대로 사용할 수 없습니다.' });
+  }
+
   const hashed = await bcrypt.hash(newPassword, config.bcrypt.saltRounds);
   await userRepository.updatePassword(user, { password: hashed });
   await pwResetRepository.deleteToken(pr, { resetToken: null, resetExp: null });
