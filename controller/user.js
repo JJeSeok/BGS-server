@@ -158,7 +158,9 @@ export async function forgotPasswordReset(req, res) {
   const { resetToken, newPassword } = req.body;
   const pr = await pwResetRepository.getResetToken(resetToken);
   if (!pr || pr.resetExp < new Date()) {
-    return res.status(400).json({ message: '토큰이 유효하지 않습니다.' });
+    return res.status(400).json({
+      message: '재설정에 실패했습니다. 코드가 만료되었을 수 있습니다.',
+    });
   }
 
   const user = await userRepository.findByUsername(pr.username);

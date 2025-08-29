@@ -202,7 +202,6 @@ router.post(
 // POST /users/forgotPassword/reset
 router.post(
   '/forgotPassword/reset',
-  pwdLimiter,
   validateForgotPwReset,
   userController.forgotPasswordReset
 );
