@@ -169,6 +169,9 @@ router.post('/signup', validateSignup, userController.signup);
 // POST /users/login
 router.post('/login', validateCredential, userController.login);
 
+// POST /users/logout
+router.post('/logout', userController.logout);
+
 // POST /users/forgotId-phone
 router.post(
   '/forgotId-phone',
