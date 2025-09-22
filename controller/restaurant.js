@@ -17,13 +17,31 @@ export async function getRestaurant(req, res) {
 }
 
 export async function createRestaurant(req, res) {
-  const { name, openingTime, closingTime, phone, type } = req.body;
+  const {
+    name,
+    category,
+    branch_info,
+    main_image_url,
+    sido,
+    sigugun,
+    dongmyun,
+    road_address,
+    jibun_address,
+    phone,
+    description,
+  } = req.body;
   const restaurant = await restaurantRepository.create(
     name,
-    openingTime,
-    closingTime,
+    category,
+    branch_info,
+    main_image_url,
+    sido,
+    sigugun,
+    dongmyun,
+    road_address,
+    jibun_address,
     phone,
-    type
+    description
   );
 
   res.status(201).json(restaurant);
@@ -36,7 +54,6 @@ export async function updateRestaurant(req, res) {
   if (!restaurant) {
     return res.sendStatus(404);
   }
-  console.log(updateData);
 
   const updated = await restaurantRepository.update(restaurantId, updateData);
   res.status(200).json(updated);

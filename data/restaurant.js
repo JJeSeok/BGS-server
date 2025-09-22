@@ -1,34 +1,94 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
-const Restaurant = sequelize.define('restaurant', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    allowNull: false,
+const Restaurant = sequelize.define(
+  'restaurant',
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    category: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    branch_info: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    main_image_url: {
+      type: DataTypes.TEXT,
+    },
+    sido: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    sigugun: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    dongmyun: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    road_address: {
+      type: DataTypes.STRING(40),
+    },
+    jibun_address: {
+      type: DataTypes.STRING(40),
+    },
+    // openingTime: {
+    //   type: DataTypes.TIME,
+    //   allowNull: false,
+    // },
+    // closingTime: {
+    //   type: DataTypes.TIME,
+    //   allowNull: false,
+    // },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    rating_avg: {
+      type: DataTypes.DECIMAL(2, 1),
+      allowNull: false,
+      defaultValue: 0.0,
+    },
+    rating_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    review_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    like_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    view_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    description: {
+      type: DataTypes.TEXT,
+    },
   },
-  name: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-  },
-  openingTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-  },
-  closingTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-  },
-  phone: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-  },
-  type: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-  },
-});
+  {
+    charset: 'utf8mb4',
+    collate: 'utf8mb4_0900_ai_ci',
+  }
+);
 
 export async function getAllRestaurants() {
   return Restaurant.findAll();
@@ -38,13 +98,31 @@ export async function getRestaurantById(id) {
   return Restaurant.findByPk(id);
 }
 
-export async function create(name, openingTime, closingTime, phone, type) {
+export async function create(
+  name,
+  category,
+  branch_info,
+  main_image_url,
+  sido,
+  sigugun,
+  dongmyun,
+  road_address,
+  jibun_address,
+  phone,
+  description
+) {
   return Restaurant.create({
     name,
-    openingTime,
-    closingTime,
+    category,
+    branch_info,
+    main_image_url,
+    sido,
+    sigugun,
+    dongmyun,
+    road_address,
+    jibun_address,
     phone,
-    type,
+    description,
   }).then((data) => getRestaurantById(data.dataValues.id));
 }
 
