@@ -1,7 +1,8 @@
 import * as restaurantRepository from '../data/restaurant.js';
 
 export async function getRestaurants(req, res) {
-  const data = await restaurantRepository.getAllRestaurants();
+  const rows = await restaurantRepository.getAllRestaurants();
+  const data = rows.map(toCardDto);
   res.status(200).json(data);
 }
 
@@ -68,4 +69,22 @@ export async function deleteRestaurant(req, res) {
 
   await restaurantRepository.remove(restaurantId);
   res.sendStatus(204);
+}
+
+function toCardDto(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    mainImageUrl: r.mainImageUrl ?? r.main_image_url,
+    rating: {
+      avg: Number(r.ratingAvg ?? r.rating_avg ?? 0),
+      count: r.reviewCount ?? r.review_count ?? 0,
+    },
+    address: {
+      sido: r.sido,
+      sigugun: r.sigugun,
+      dongmyun: r.dongmyun,
+    },
+  };
 }

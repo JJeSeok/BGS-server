@@ -90,8 +90,20 @@ const Restaurant = sequelize.define(
   }
 );
 
+const ATTRS = [
+  'id',
+  'name',
+  'category',
+  'sido',
+  'sigugun',
+  'dongmyun',
+  ['main_image_url', 'mainImageUrl'],
+  ['rating_avg', 'ratingAvg'],
+  ['review_count', 'reviewCount'],
+];
+
 export async function getAllRestaurants() {
-  return Restaurant.findAll();
+  return Restaurant.findAll({ attributes: ATTRS, raw: true });
 }
 
 export async function getRestaurantById(id) {
