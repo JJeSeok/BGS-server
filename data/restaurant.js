@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
-const Restaurant = sequelize.define(
+export const Restaurant = sequelize.define(
   'restaurant',
   {
     id: {
