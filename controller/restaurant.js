@@ -1,4 +1,5 @@
 import * as restaurantRepository from '../data/restaurant.js';
+import * as restaurantPhotoRepository from '../data/restaurant_photo.js';
 
 export async function getRestaurants(req, res) {
   const rows = await restaurantRepository.getAllRestaurants();
@@ -30,6 +31,7 @@ export async function createRestaurant(req, res) {
     jibun_address,
     phone,
     description,
+    photos,
   } = req.body;
   const restaurant = await restaurantRepository.create(
     name,
@@ -44,6 +46,11 @@ export async function createRestaurant(req, res) {
     phone,
     description
   );
+
+  if (Array.isArray(photos)) {
+    const rows = await createPhoto(restaurant.dataValues.id, photos);
+    const url = await restaurantPhotoRepository.create(rows);
+  }
 
   res.status(201).json(restaurant);
 }
@@ -87,4 +94,14 @@ function toCardDto(r) {
       dongmyun: r.dongmyun,
     },
   };
+}
+
+async function createPhoto(id, photos) {
+  const maxOrder = await restaurantPhotoRepository.getMaxSortOrder(id);
+
+  return photos.map((p, i) => ({
+    restaurant_id: id,
+    url: p,
+    sort_order: maxOrder + 1 + i,
+  }));
 }

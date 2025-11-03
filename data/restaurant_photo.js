@@ -37,7 +37,7 @@ const RestaurantPhoto = sequelize.define(
   }
 );
 
-Photo.belongsTo(Restaurant, {
+RestaurantPhoto.belongsTo(Restaurant, {
   as: 'restaurant',
   foreignKey: 'restaurant_id',
   onDelete: 'CASCADE',
@@ -50,4 +50,14 @@ export async function getRestaurantPhotos(id) {
     attributes: ['id', 'url', 'sort_order'],
     order: [['sort_order', 'ASC']],
   });
+}
+
+export async function getMaxSortOrder(id) {
+  return (
+    RestaurantPhoto.max('sort_order', { where: { restaurant_id: id } }) || 0
+  );
+}
+
+export async function create(rows) {
+  return RestaurantPhoto.bulkCreate(rows);
 }

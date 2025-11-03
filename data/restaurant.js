@@ -24,6 +24,7 @@ export const Restaurant = sequelize.define(
     },
     main_image_url: {
       type: DataTypes.TEXT,
+      allowNull: false,
     },
     sido: {
       type: DataTypes.STRING(20),
