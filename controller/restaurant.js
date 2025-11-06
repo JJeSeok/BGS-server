@@ -11,8 +11,12 @@ export async function getRestaurant(req, res) {
   const restaurantId = req.params.id;
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
-  if (restaurant) res.status(200).json(restaurant);
-  else
+  if (restaurant) {
+    const photos = await restaurantPhotoRepository.getRestaurantPhotos(
+      restaurantId
+    );
+    res.status(200).json({ restaurant, photos });
+  } else
     res
       .status(404)
       .json({ message: `Restaurant id(${restaurantId}) not found` });
