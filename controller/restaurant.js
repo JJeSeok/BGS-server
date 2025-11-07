@@ -1,5 +1,5 @@
 import * as restaurantRepository from '../data/restaurant.js';
-import * as restaurantPhotoRepository from '../data/restaurant_photo.js';
+import * as restaurantPhotoRepository from '../data/restaurantPhoto.js';
 
 export async function getRestaurants(req, res) {
   const rows = await restaurantRepository.getAllRestaurants();
