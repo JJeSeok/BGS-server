@@ -31,7 +31,6 @@ export const Review = sequelize.define(
     },
     ratingCategory: {
       type: DataTypes.ENUM('good', 'ok', 'bad'),
-      allowNull: false,
     },
     content: {
       type: DataTypes.TEXT,
@@ -43,6 +42,7 @@ export const Review = sequelize.define(
       { fields: ['restaurant_id', 'createdAt', 'id'] },
       { fields: ['restaurant_id', 'rating', 'createdAt', 'id'] },
       { fields: ['user_id', 'createdAt'] },
+      { fields: ['restaurant_id', 'ratingCategory', 'createdAt', 'id'] },
     ],
   }
 );
@@ -58,3 +58,16 @@ Review.belongsTo(User, {
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
+
+export async function getListReviews(restaurant_id) {
+  return Review.findAll({ where: restaurant_id });
+}
+
+export async function getReviewById(id) {
+  return Review.findByPk(id);
+}
+
+export async function create(review) {
+  return Review.create(review) //
+    .then((data) => getReviewById(data.dataValues.id));
+}
