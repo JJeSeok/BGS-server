@@ -67,7 +67,8 @@ export async function getReviewById(id) {
   return Review.findByPk(id);
 }
 
-export async function create(review) {
-  return Review.create(review) //
-    .then((data) => getReviewById(data.dataValues.id));
+export async function create(review, transaction) {
+  const options = transaction ? { transaction } : {};
+  return Review.create(review, options); //
+  //.then((data) => getReviewById(data.dataValues.id));
 }

@@ -3,6 +3,7 @@ import 'express-async-errors';
 import * as restaurantController from '../controller/restaurant.js';
 import * as reviewController from '../controller/review.js';
 import { isAuth } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -22,6 +23,11 @@ router.put('/:id', restaurantController.updateRestaurant);
 router.delete('/:id', restaurantController.deleteRestaurant);
 
 // POST /restaurants/:id/reviews
-router.post('/:id/reviews', isAuth, reviewController.createReview);
+router.post(
+  '/:id/reviews',
+  isAuth,
+  upload.array('images', 30),
+  reviewController.createReview
+);
 
 export default router;

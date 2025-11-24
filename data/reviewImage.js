@@ -31,3 +31,8 @@ const ReviewImage = sequelize.define('review_image', {
 });
 
 ReviewImage.belongsTo(Review, { foreignKey: 'review_id' });
+
+export async function create(images, transaction) {
+  const options = transaction ? { transaction } : {};
+  return ReviewImage.bulkCreate(images, options);
+}
