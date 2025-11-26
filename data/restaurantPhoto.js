@@ -1,8 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
-import { Restaurant } from './restaurant.js';
 
-const RestaurantPhoto = sequelize.define(
+export const RestaurantPhoto = sequelize.define(
   'restaurant_photo',
   {
     id: {
@@ -36,13 +35,6 @@ const RestaurantPhoto = sequelize.define(
     ],
   }
 );
-
-RestaurantPhoto.belongsTo(Restaurant, {
-  as: 'restaurant',
-  foreignKey: 'restaurant_id',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE',
-});
 
 export async function getRestaurantPhotos(id) {
   return RestaurantPhoto.findAll({

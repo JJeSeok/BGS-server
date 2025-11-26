@@ -1,7 +1,5 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
-import { Restaurant } from './restaurant.js';
-import { User } from './user.js';
 
 export const Review = sequelize.define(
   'review',
@@ -47,20 +45,12 @@ export const Review = sequelize.define(
   }
 );
 
-Review.belongsTo(Restaurant, {
-  foreignKey: 'restaurant_id',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE',
-});
+export async function getAllByRestaurantId(restaurant_id) {
+  return Review.findAll({ where: { restaurant_id } });
+}
 
-Review.belongsTo(User, {
-  foreignKey: 'user_id',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE',
-});
-
-export async function getListReviews(restaurant_id) {
-  return Review.findAll({ where: restaurant_id });
+export async function getAllByUserId(user_id) {
+  return Review.findAll({ where: { user_id } });
 }
 
 export async function getReviewById(id) {
@@ -70,5 +60,4 @@ export async function getReviewById(id) {
 export async function create(review, transaction) {
   const options = transaction ? { transaction } : {};
   return Review.create(review, options); //
-  //.then((data) => getReviewById(data.dataValues.id));
 }

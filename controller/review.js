@@ -1,7 +1,25 @@
 import { sequelize } from '../db/database.js';
 import * as reviewRepository from '../data/review.js';
-import * as reviewImageRepository from '../data/reviewImage.js';
 import * as restaurantRepository from '../data/restaurant.js';
+import * as reviewImageRepository from '../data/reviewImage.js';
+import * as reviewQueries from '../data/reviewQueries.js';
+
+export async function getReviews(req, res) {
+  const { restaurantId, userId } = req.query;
+  if (!restaurantId && !userId) {
+    return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
+  }
+
+  if (restaurantId) {
+    const reviews = await reviewQueries.getAllByRestaurantId(restaurantId);
+    if (!reviews || reviews.length === 0) {
+      return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
+    }
+
+    const data = toReviewDTO(reviews);
+    res.status(200).json(data);
+  }
+}
 
 export async function createReview(req, res) {
   const userId = req.userId;
@@ -68,4 +86,26 @@ function validateRating(Rating) {
     Rating >= 0 &&
     Rating <= 10
   );
+}
+
+function toReviewDTO(reviews) {
+  return reviews.map((r) => {
+    const plain = r.toJSON();
+    return {
+      id: plain.id,
+      restaurantId: plain.restaurant_id,
+      userId: plain.user_id,
+      userName: plain.user.name,
+      ratingCategory: plain.ratingCategory,
+      content: plain.content,
+      createdAt: plain.createdAt,
+      images: (plain.images || []).map((img) => ({
+        id: img.id,
+        url: img.url,
+        width: img.width,
+        height: img.height,
+        sortOrder: img.sort_order,
+      })),
+    };
+  });
 }

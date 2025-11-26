@@ -6,6 +6,10 @@ import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
+// GET /reviews?restaurantId=:restaurantId
+// GET /reviews?userId=:userId
+router.get('/', reviewController.getReviews);
+
 // POST /reviews
 router.post(
   '/',
