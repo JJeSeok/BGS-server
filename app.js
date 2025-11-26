@@ -6,6 +6,7 @@ import path from 'path';
 import 'express-async-errors';
 import restaurantsRouter from './router/restaurants.js';
 import userRouter from './router/users.js';
+import reviewsRouter from './router/reviews.js';
 import { sequelize } from './db/database.js';
 import { scheduleCleanup } from './jobs/cleanupPasswordResets.js';
 import { config } from './config.js';
@@ -32,6 +33,7 @@ app.use(
 
 app.use('/restaurants', restaurantsRouter);
 app.use('/users', userRouter);
+app.use('/reviews', reviewsRouter);
 
 app.use((req, res, next) => {
   res.sendStatus(404);

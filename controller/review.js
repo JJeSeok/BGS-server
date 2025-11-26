@@ -4,11 +4,10 @@ import * as reviewImageRepository from '../data/reviewImage.js';
 import * as restaurantRepository from '../data/restaurant.js';
 
 export async function createReview(req, res) {
-  const restaurantId = req.params.id;
-  const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
   const userId = req.userId;
-  const { rating, content } = req.body;
+  const { restaurantId, rating, content } = req.body;
   const Rating = Number(rating);
+  const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
   if (!restaurant) {
     res
