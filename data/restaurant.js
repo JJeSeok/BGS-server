@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Restaurant = sequelize.define(
@@ -104,7 +104,14 @@ const ATTRS = [
 ];
 
 export async function getAllRestaurants() {
-  return Restaurant.findAll({ attributes: ATTRS, raw: true });
+  const rows = await sequelize.query(
+    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, COALESCE(s.reviewCount, 0) AS reviewCount, COALESCE(s.avgRating, 0) AS ratingAvg
+    FROM restaurants AS r LEFT JOIN (SELECT restaurant_id, COUNT(*) AS reviewCount, AVG(rating) AS avgRating FROM reviews GROUP BY restaurant_id) AS s ON r.id = s.restaurant_id
+    ORDER BY r.id ASC`,
+    { type: QueryTypes.SELECT }
+  );
+
+  return rows;
 }
 
 export async function getRestaurantById(id) {

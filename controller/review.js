@@ -90,16 +90,16 @@ function validateRating(Rating) {
 
 function toReviewDTO(reviews) {
   return reviews.map((r) => {
-    const plain = r.toJSON();
     return {
-      id: plain.id,
-      restaurantId: plain.restaurant_id,
-      userId: plain.user_id,
-      userName: plain.user.name,
-      ratingCategory: plain.ratingCategory,
-      content: plain.content,
-      createdAt: plain.createdAt,
-      images: (plain.images || []).map((img) => ({
+      id: r.id,
+      restaurantId: r.restaurant_id,
+      userId: r.user_id,
+      userName: r.user.name,
+      rating: r.rating,
+      ratingCategory: r.ratingCategory,
+      content: r.content,
+      createdAt: r.createdAt,
+      images: (r.images || []).map((img) => ({
         id: img.id,
         url: img.url,
         width: img.width,

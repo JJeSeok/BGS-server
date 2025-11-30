@@ -10,6 +10,7 @@ import reviewsRouter from './router/reviews.js';
 import { sequelize } from './db/database.js';
 import { scheduleCleanup } from './jobs/cleanupPasswordResets.js';
 import { config } from './config.js';
+import './data/association.js';
 
 const app = express();
 
