@@ -21,7 +21,6 @@ export const isAuth = async (req, res, next) => {
       return res.status(401).json(AUTH_ERROR);
     }
     req.userId = user.id;
-    req.token = token; // token 정보를 보내줘야 할지 추후에 확인하기
     next();
   });
 };
