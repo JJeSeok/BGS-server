@@ -37,7 +37,7 @@ export async function createRestaurant(req, res) {
     description,
     photos,
   } = req.body;
-  const restaurant = await restaurantRepository.create(
+  const restaurant = await restaurantRepository.create({
     name,
     category,
     branch_info,
@@ -48,8 +48,8 @@ export async function createRestaurant(req, res) {
     road_address,
     jibun_address,
     phone,
-    description
-  );
+    description,
+  });
 
   if (Array.isArray(photos)) {
     const rows = await createPhoto(restaurant.dataValues.id, photos);

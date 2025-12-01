@@ -118,32 +118,10 @@ export async function getRestaurantById(id) {
   return Restaurant.findByPk(id);
 }
 
-export async function create(
-  name,
-  category,
-  branch_info,
-  main_image_url,
-  sido,
-  sigugun,
-  dongmyun,
-  road_address,
-  jibun_address,
-  phone,
-  description
-) {
-  return Restaurant.create({
-    name,
-    category,
-    branch_info,
-    main_image_url,
-    sido,
-    sigugun,
-    dongmyun,
-    road_address,
-    jibun_address,
-    phone,
-    description,
-  }).then((data) => getRestaurantById(data.dataValues.id));
+export async function create(restaurant) {
+  return Restaurant.create(restaurant).then((data) =>
+    getRestaurantById(data.dataValues.id)
+  );
 }
 
 export async function update(id, updateData) {

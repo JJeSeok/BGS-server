@@ -18,4 +18,7 @@ router.post(
   reviewController.createReview
 );
 
+// POST /reviews/:id/reactions
+router.post('/:id/reactions', isAuth, reviewController.toggleReviewReaction);
+
 export default router;

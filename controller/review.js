@@ -3,6 +3,7 @@ import * as reviewRepository from '../data/review.js';
 import * as restaurantRepository from '../data/restaurant.js';
 import * as reviewImageRepository from '../data/reviewImage.js';
 import * as reviewQueries from '../data/reviewQueries.js';
+import * as reviewReactionRepository from '../data/reviewReaction.js';
 
 export async function getReviews(req, res) {
   const { restaurantId, userId } = req.query;
@@ -16,7 +17,28 @@ export async function getReviews(req, res) {
       return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
     }
 
-    const data = toReviewDTO(reviews);
+    const baseDtos = toReviewDTO(reviews);
+    const reviewIds = baseDtos.map((r) => r.id);
+    const [countsMap, userReactionsMap] = await Promise.all([
+      reviewReactionRepository.getCountsForReviews(reviewIds),
+      reviewReactionRepository.getUserReactionsForReviews(
+        reviewIds,
+        req.userId
+      ),
+    ]);
+
+    const data = baseDtos.map((r) => {
+      const counts = countsMap[r.id] ?? { likeCount: 0, dislikeCount: 0 };
+      const userReaction = userReactionsMap[r.id] ?? null;
+
+      return {
+        ...r,
+        likeCount: counts.likeCount,
+        dislikeCount: counts.dislikeCount,
+        userReaction,
+      };
+    });
+
     res.status(200).json(data);
   }
 }
@@ -76,6 +98,47 @@ export async function createReview(req, res) {
     return res
       .status(500)
       .json({ message: '리뷰 저장 중 오류가 발생했습니다.' });
+  }
+}
+
+export async function toggleReviewReaction(req, res) {
+  const reviewId = req.params.id;
+  const userId = req.userId;
+
+  const { type } = req.body;
+
+  if (!['like', 'dislike'].includes(type)) {
+    return res
+      .status(400)
+      .json({ message: 'type은 like 또는 dislike 이어야 합니다.' });
+  }
+
+  try {
+    const review = await reviewRepository.getReviewById(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
+    }
+
+    const { userReaction } = await reviewReactionRepository.toggleReaction(
+      reviewId,
+      userId,
+      type
+    );
+
+    const { likeCount, dislikeCount } =
+      await reviewReactionRepository.getCountsByReviewId(reviewId);
+
+    res.status(200).json({
+      reviewId: Number(reviewId),
+      userReaction,
+      likeCount,
+      dislikeCount,
+    });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '리뷰 반응 저장 중 오류가 발생했습니다.' });
   }
 }
 
