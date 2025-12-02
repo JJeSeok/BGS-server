@@ -43,6 +43,17 @@ export async function getReviews(req, res) {
   }
 }
 
+export async function getReview(req, res) {
+  const reviewId = req.params.id;
+  const review = await reviewQueries.getOneWithImages(reviewId);
+  if (!review) {
+    return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
+  }
+
+  const data = toReviewDTO([review])[0];
+  res.status(200).json(data);
+}
+
 export async function createReview(req, res) {
   const userId = req.userId;
   const { restaurantId, rating, content } = req.body;
@@ -99,6 +110,48 @@ export async function createReview(req, res) {
       .status(500)
       .json({ message: '리뷰 저장 중 오류가 발생했습니다.' });
   }
+}
+
+export async function updateReview(req, res) {
+  const reviewId = req.params.id;
+  const userId = req.userId;
+  const { rating, content } = req.body;
+  const Rating = Number(rating);
+
+  if (!validateRating(Rating)) {
+    res
+      .status(400)
+      .json({ message: '평점은 0~5점까지 0.5점 단위로 입력하세요.' });
+  }
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    res.status(400).json({ message: '리뷰를 입력해주세요.' });
+  }
+
+  const updated = await reviewRepository.update(reviewId, userId, {
+    rating: Rating,
+    content,
+  });
+  if (!updated) {
+    return res
+      .status(403)
+      .json({ message: '리뷰를 수정할 권한이 없거나 존재하지 않습니다.' });
+  }
+
+  res.sendStatus(204);
+}
+
+export async function deleteReview(req, res) {
+  const reviewId = req.params.id;
+  const userId = req.userId;
+
+  const review = await reviewRepository.remove(reviewId, userId);
+  if (!review) {
+    return res
+      .status(403)
+      .json({ message: '리뷰를 삭제할 권한이 없거나 존재하지 않습니다.' });
+  }
+
+  res.sendStatus(204);
 }
 
 export async function toggleReviewReaction(req, res) {

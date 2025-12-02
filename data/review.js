@@ -61,3 +61,23 @@ export async function create(review, transaction) {
   const options = transaction ? { transaction } : {};
   return Review.create(review, options); //
 }
+
+export async function update(id, user_id, data, transaction) {
+  const options = transaction ? { transaction } : {};
+  return Review.findOne({ where: { id, user_id }, ...options }).then(
+    (review) => {
+      if (!review) return null;
+      return review.update(data, options);
+    }
+  );
+}
+
+export async function remove(id, user_id, transaction) {
+  const options = transaction ? { transaction } : {};
+  return Review.findOne({ where: { id, user_id }, ...options }).then(
+    (review) => {
+      if (!review) return null;
+      return review.destroy();
+    }
+  );
+}

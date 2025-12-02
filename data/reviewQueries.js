@@ -25,3 +25,27 @@ export async function getAllByRestaurantId(restaurant_id) {
 
   return reviews;
 }
+
+export async function getOneWithImages(id) {
+  const review = await Review.findOne({
+    where: { id },
+    include: [
+      {
+        model: ReviewImage,
+        as: 'images',
+        attributes: ['id', 'url', 'width', 'height', 'sort_order'],
+        required: false,
+        order: [['sort_order', 'ASC']],
+        separate: true,
+      },
+      {
+        model: User,
+        attributes: ['id', 'name'],
+        required: true,
+      },
+    ],
+    order: [['createdAt', 'DESC']],
+  });
+
+  return review;
+}

@@ -11,6 +11,9 @@ const router = express.Router();
 // GET /reviews?userId=:userId
 router.get('/', optionalAuth, reviewController.getReviews);
 
+// GET /reivews/:id
+router.get('/:id', reviewController.getReview);
+
 // POST /reviews
 router.post(
   '/',
@@ -21,5 +24,11 @@ router.post(
 
 // POST /reviews/:id/reactions
 router.post('/:id/reactions', isAuth, reviewController.toggleReviewReaction);
+
+// PUT /reviews/:id
+router.put('/:id', isAuth, reviewController.updateReview);
+
+// DELETE /reviews/:id
+router.delete('/:id', isAuth, reviewController.deleteReview);
 
 export default router;
