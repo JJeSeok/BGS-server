@@ -61,17 +61,17 @@ export async function createReview(req, res) {
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
   if (!restaurant) {
-    res
+    return res
       .status(404)
       .json({ message: `Restaurant id(${restaurantId}) not found` });
   }
   if (!validateRating(Rating)) {
-    res
+    return res
       .status(400)
       .json({ message: '평점은 0~5점까지 0.5점 단위로 입력하세요.' });
   }
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
-    res.status(400).json({ message: '리뷰를 입력해주세요.' });
+    return res.status(400).json({ message: '리뷰를 입력해주세요.' });
   }
 
   try {
@@ -119,25 +119,44 @@ export async function updateReview(req, res) {
   const Rating = Number(rating);
 
   if (!validateRating(Rating)) {
-    res
+    return res
       .status(400)
       .json({ message: '평점은 0~5점까지 0.5점 단위로 입력하세요.' });
   }
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
-    res.status(400).json({ message: '리뷰를 입력해주세요.' });
+    return res.status(400).json({ message: '리뷰를 입력해주세요.' });
   }
 
-  const updated = await reviewRepository.update(reviewId, userId, {
-    rating: Rating,
-    content,
-  });
-  if (!updated) {
+  try {
+    const updated = await reviewQueries.updateReviewWithImages(
+      reviewId,
+      userId,
+      {
+        rating: Rating,
+        content,
+        deletedImageIds: req.body.deletedImageIds || [],
+      },
+      req.files || []
+    );
+
+    if (!updated) {
+      return res
+        .status(403)
+        .json({ message: '리뷰를 수정할 권한이 없거나 존재하지 않습니다.' });
+    }
+
+    return res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    if (err.message === 'MAX_IMAGES_EXCEEDED') {
+      return res
+        .status(400)
+        .json({ message: '이미지는 최대 30장까지 등록할 수 있습니다.' });
+    }
     return res
-      .status(403)
-      .json({ message: '리뷰를 수정할 권한이 없거나 존재하지 않습니다.' });
+      .status(500)
+      .json({ message: '리뷰 수정 중 오류가 발생했습니다.' });
   }
-
-  res.sendStatus(204);
 }
 
 export async function deleteReview(req, res) {

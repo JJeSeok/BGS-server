@@ -1,3 +1,4 @@
+import { sequelize } from '../db/database.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
@@ -48,4 +49,58 @@ export async function getOneWithImages(id) {
   });
 
   return review;
+}
+
+export async function updateReviewWithImages(reviewId, userId, payload, files) {
+  return sequelize.transaction(async (t) => {
+    const review = await Review.findOne({
+      where: { id: reviewId, user_id: userId },
+      transaction: t,
+    });
+    if (!review) return null;
+
+    await review.update(
+      { rating: payload.rating, content: payload.content.trim() },
+      { transaction: t }
+    );
+
+    let deletedIds = payload.deletedImageIds || [];
+    if (!Array.isArray(deletedIds)) deletedIds = [deletedIds];
+    deletedIds = deletedIds.map(Number).filter(Boolean);
+
+    if (deletedIds.length > 0) {
+      await ReviewImage.destroy({
+        where: { id: deletedIds, review_id: reviewId },
+        transaction: t,
+      });
+    }
+
+    const existingCount = await ReviewImage.count({
+      where: { review_id: reviewId },
+      transaction: t,
+    });
+    const newCount = (files || []).length;
+    const MAX_IMAGES = 30;
+
+    if (existingCount + newCount > MAX_IMAGES) {
+      throw new Error('MAX_IMAGES_EXCEEDED');
+    }
+
+    const maxSort =
+      (await ReviewImage.max('sort_order', {
+        where: { review_id: reviewId },
+        transaction: t,
+      })) || 0;
+
+    if (files && files.length > 0) {
+      const images = files.map((file, index) => ({
+        review_id: reviewId,
+        url: `/uploads/reviews/${file.filename}`,
+        sort_order: maxSort + index + 1,
+      }));
+      await ReviewImage.bulkCreate(images, { transaction: t });
+    }
+
+    return review;
+  });
 }

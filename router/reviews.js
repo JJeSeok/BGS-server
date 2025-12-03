@@ -26,7 +26,12 @@ router.post(
 router.post('/:id/reactions', isAuth, reviewController.toggleReviewReaction);
 
 // PUT /reviews/:id
-router.put('/:id', isAuth, reviewController.updateReview);
+router.put(
+  '/:id',
+  isAuth,
+  upload.array('images', 30),
+  reviewController.updateReview
+);
 
 // DELETE /reviews/:id
 router.delete('/:id', isAuth, reviewController.deleteReview);
