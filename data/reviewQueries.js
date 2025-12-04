@@ -65,10 +65,22 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
     );
 
     let deletedIds = payload.deletedImageIds || [];
-    if (!Array.isArray(deletedIds)) deletedIds = [deletedIds];
+    if (!Array.isArray(deletedIds)) {
+      deletedIds = [deletedIds];
+    }
     deletedIds = deletedIds.map(Number).filter(Boolean);
 
+    let deletedImageUrls = [];
+
     if (deletedIds.length > 0) {
+      const imagesToDelete = await ReviewImage.findAll({
+        where: { id: deletedIds, review_id: reviewId },
+        transaction: t,
+      });
+
+      deletedImageUrls = imagesToDelete.map((img) => img.url);
+      console.log(deletedImageUrls);
+
       await ReviewImage.destroy({
         where: { id: deletedIds, review_id: reviewId },
         transaction: t,
@@ -101,6 +113,6 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
       await ReviewImage.bulkCreate(images, { transaction: t });
     }
 
-    return review;
+    return { review, deletedImageUrls };
   });
 }
