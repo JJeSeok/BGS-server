@@ -1,6 +1,8 @@
 import express from 'express';
 import 'express-async-errors';
 import * as restaurantController from '../controller/restaurant.js';
+import { isAuth } from '../middleware/auth.js';
+import { optionalAuth } from '../middleware/optionalAuth.js';
 
 const router = express.Router();
 
@@ -8,10 +10,13 @@ const router = express.Router();
 router.get('/', restaurantController.getRestaurants);
 
 // GET /restaurants/:id
-router.get('/:id', restaurantController.getRestaurant);
+router.get('/:id', optionalAuth, restaurantController.getRestaurant);
 
 // POST /restaurants
 router.post('/', restaurantController.createRestaurant);
+
+// POST /restaurants/:id/likes
+router.post('/:id/likes', isAuth, restaurantController.toggleRestaurantLike);
 
 // PUT /restaurants/:id
 router.put('/:id', restaurantController.updateRestaurant);

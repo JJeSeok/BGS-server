@@ -1,5 +1,6 @@
 import * as restaurantRepository from '../data/restaurant.js';
 import * as restaurantPhotoRepository from '../data/restaurantPhoto.js';
+import * as restaurantLikeRepository from '../data/restaurantLike.js';
 
 export async function getRestaurants(req, res) {
   const rows = await restaurantRepository.getAllRestaurants();
@@ -9,13 +10,25 @@ export async function getRestaurants(req, res) {
 
 export async function getRestaurant(req, res) {
   const restaurantId = req.params.id;
+  const userId = req.userId;
+
+  let isLiked = false;
+  if (userId) {
+    const like = await restaurantLikeRepository.findByRestaurantAndUser(
+      userId,
+      restaurantId
+    );
+    isLiked = !!like;
+  }
+
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
   if (restaurant) {
     const photos = await restaurantPhotoRepository.getRestaurantPhotos(
       restaurantId
     );
-    res.status(200).json({ restaurant, photos });
+    await restaurantRepository.increaseInViewCount(restaurantId);
+    res.status(200).json({ restaurant, photos, isLiked });
   } else
     res
       .status(404)
@@ -111,4 +124,42 @@ async function createPhoto(id, photos) {
     url: p,
     sort_order: maxOrder + 1 + i,
   }));
+}
+
+export async function toggleRestaurantLike(req, res) {
+  const restaurantId = req.params.id;
+  const userId = req.userId;
+
+  try {
+    const restaurant = await restaurantRepository.getRestaurantById(
+      restaurantId
+    );
+    if (!restaurant) {
+      return res.status(404).json({ message: '식당을 찾을 수 없습니다.' });
+    }
+
+    const existing = await restaurantLikeRepository.findByRestaurantAndUser(
+      userId,
+      restaurantId
+    );
+
+    let isLiked;
+    if (existing) {
+      await restaurantLikeRepository.remove(userId, restaurantId);
+      await restaurantRepository.decreaseInLikeCount(restaurantId);
+      isLiked = false;
+    } else {
+      await restaurantLikeRepository.create(userId, restaurantId);
+      await restaurantRepository.increaseInLikeCount(restaurantId);
+      isLiked = true;
+    }
+
+    const updated = await restaurantRepository.getRestaurantById(restaurantId);
+    return res.json({ likeCount: updated.like_count, isLiked });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '레스토랑 반응 저장 중 오류가 발생했습니다.' });
+  }
 }

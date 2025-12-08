@@ -4,6 +4,7 @@ import { Review } from './review.js';
 import { User } from './user.js';
 import { ReviewImage } from './reviewImage.js';
 import { ReviewReaction } from './reviewReaction.js';
+import { RestaurantLike } from './restaurantLike.js';
 
 RestaurantPhoto.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
@@ -46,3 +47,17 @@ ReviewReaction.belongsTo(User, {
   onUpdate: 'CASCADE',
 });
 User.hasMany(ReviewReaction, { foreignKey: 'user_id' });
+
+RestaurantLike.belongsTo(User, {
+  foreignKey: 'user_id',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+User.hasMany(RestaurantLike, { foreignKey: 'user_id' });
+
+RestaurantLike.belongsTo(Restaurant, {
+  foreignKey: 'restaurant_id',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+Restaurant.hasMany(RestaurantLike, { foreignKey: 'restaurant_id' });
