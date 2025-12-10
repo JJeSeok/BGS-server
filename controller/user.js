@@ -189,3 +189,76 @@ export async function me(req, res) {
   }
   res.status(200).json({ username: user.username });
 }
+
+export async function getMyProfile(req, res) {
+  const user = await userRepository.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  res.status(200).json(user);
+}
+
+export async function checkMyPassword(req, res) {
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: '비밀번호를 입력해 주세요.' });
+  }
+
+  const user = await userRepository.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });
+  }
+
+  return res.sendStatus(200);
+}
+
+export async function updateMyProfile(req, res) {
+  const { currentPassword, newPassword, name, email, phone, gender, birth } =
+    req.body;
+  if (!currentPassword) {
+    return res.status(400).json({ message: '현재 비밀번호가 필요합니다.' });
+  }
+
+  const user = await userRepository.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) {
+    return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });
+  }
+
+  const updateData = {};
+  if (name) updateData.name = name;
+  if (email) updateData.email = email;
+  if (phone) updateData.phone = phone;
+  if (gender) updateData.gender = gender;
+  if (birth) updateData.birth = birth;
+
+  if (newPassword) {
+    updateData.password = await bcrypt.hash(
+      newPassword,
+      config.bcrypt.saltRounds
+    );
+  }
+
+  const updated = await userRepository.update(req.userId, updateData);
+
+  res.status(200).json({
+    id: updated.id,
+    username: updated.username,
+    name: updated.name,
+    email: updated.email,
+    phone: updated.phone,
+    gender: updated.gender,
+    birth: updated.birth,
+  });
+}

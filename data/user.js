@@ -90,3 +90,7 @@ export async function findById(id) {
 export async function updatePassword(user, password) {
   return user.update(password);
 }
+
+export async function update(id, updateData) {
+  return User.findByPk(id).then((user) => user.update(updateData));
+}
