@@ -12,36 +12,38 @@ export async function getReviews(req, res) {
     return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
   }
 
+  let reviews;
+
   if (restaurantId) {
-    const reviews = await reviewQueries.getAllByRestaurantId(restaurantId);
-    if (!reviews || reviews.length === 0) {
-      return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
-    }
-
-    const baseDtos = toReviewDTO(reviews);
-    const reviewIds = baseDtos.map((r) => r.id);
-    const [countsMap, userReactionsMap] = await Promise.all([
-      reviewReactionRepository.getCountsForReviews(reviewIds),
-      reviewReactionRepository.getUserReactionsForReviews(
-        reviewIds,
-        req.userId
-      ),
-    ]);
-
-    const data = baseDtos.map((r) => {
-      const counts = countsMap[r.id] ?? { likeCount: 0, dislikeCount: 0 };
-      const userReaction = userReactionsMap[r.id] ?? null;
-
-      return {
-        ...r,
-        likeCount: counts.likeCount,
-        dislikeCount: counts.dislikeCount,
-        userReaction,
-      };
-    });
-
-    res.status(200).json(data);
+    reviews = await reviewQueries.getAllByRestaurantId(restaurantId);
+  } else if (userId) {
+    reviews = await reviewQueries.getAllByUserId(userId);
   }
+
+  if (!reviews || reviews.length === 0) {
+    return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
+  }
+
+  const baseDtos = toReviewDTO(reviews);
+  const reviewIds = baseDtos.map((r) => r.id);
+  const [countsMap, userReactionsMap] = await Promise.all([
+    reviewReactionRepository.getCountsForReviews(reviewIds),
+    reviewReactionRepository.getUserReactionsForReviews(reviewIds, req.userId),
+  ]);
+
+  const data = baseDtos.map((r) => {
+    const counts = countsMap[r.id] ?? { likeCount: 0, dislikeCount: 0 };
+    const userReaction = userReactionsMap[r.id] ?? null;
+
+    return {
+      ...r,
+      likeCount: counts.likeCount,
+      dislikeCount: counts.dislikeCount,
+      userReaction,
+    };
+  });
+
+  res.status(200).json(data);
 }
 
 export async function getReview(req, res) {
