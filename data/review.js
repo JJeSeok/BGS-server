@@ -81,3 +81,12 @@ export async function remove(id, user_id, transaction) {
     }
   );
 }
+
+export async function findRestaurantIdsByUserId(user_id) {
+  const rows = await Review.findAll({
+    where: { user_id },
+    attributes: ['restaurant_id'],
+    raw: true,
+  });
+  return rows.map((r) => r.restaurant_id);
+}

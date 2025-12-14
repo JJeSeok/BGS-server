@@ -266,6 +266,13 @@ router.get('/me', isAuth, userController.me);
 // GET /users/me/profile
 router.get('/me/profile', isAuth, userController.getMyProfile);
 
+// GET /users/me/visited-restaurants
+router.get(
+  '/me/visited-restaurants',
+  isAuth,
+  userController.getVisitedRestaurants
+);
+
 // POST /users/me/check-password
 router.post('/me/check-password', isAuth, userController.checkMyPassword);
 

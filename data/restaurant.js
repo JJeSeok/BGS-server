@@ -1,4 +1,4 @@
-import { DataTypes, QueryTypes } from 'sequelize';
+import { DataTypes, Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Restaurant = sequelize.define(
@@ -144,4 +144,10 @@ export async function increaseInLikeCount(id) {
 
 export async function decreaseInLikeCount(id) {
   return Restaurant.increment('like_count', { by: -1, where: { id } });
+}
+
+export async function findByIds(ids) {
+  return Restaurant.findAll({
+    where: { id: { [Op.in]: ids } },
+  });
 }
