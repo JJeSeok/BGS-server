@@ -5,6 +5,7 @@ import * as userRepository from '../data/user.js';
 import * as pwResetRepository from '../data/passwordReset.js';
 import * as reviewRepository from '../data/review.js';
 import * as restaurantRepository from '../data/restaurant.js';
+import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
 import { sendMail } from '../utils/mailer.js';
 import { config } from '../config.js';
@@ -282,8 +283,35 @@ export async function getVisitedRestaurants(req, res) {
     name: r.name,
     mainImageUrl: r.main_image_url,
     address: {
-      road: r.road_address,
-      jibun: r.jibun_address,
+      road: r.road_address || null,
+      jibun: r.jibun_address || null,
+      sido: r.sido,
+      sigugun: r.sigugun,
+      dongmyun: r.dongmyun,
+    },
+  }));
+
+  res.status(200).json(data);
+}
+
+export async function getMyLikedRestaurants(req, res) {
+  const user = await userRepository.findById(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const likedIds = await restaurantLikeRepository.getRestaurantIdsByUserId(
+    req.userId
+  );
+  if (!likedIds || likedIds.length === 0) return res.status(200).json([]);
+
+  const restaurants = await restaurantRepository.findByIds(likedIds);
+
+  const data = restaurants.map((r) => ({
+    id: r.id,
+    name: r.name,
+    mainImageUrl: r.main_image_url,
+    address: {
+      road: r.road_address || null,
+      jibun: r.jibun_address || null,
       sido: r.sido,
       sigugun: r.sigugun,
       dongmyun: r.dongmyun,

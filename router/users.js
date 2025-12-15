@@ -273,6 +273,13 @@ router.get(
   userController.getVisitedRestaurants
 );
 
+// GET /users/me/liked-restaurants
+router.get(
+  '/me/liked-restaurants',
+  isAuth,
+  userController.getMyLikedRestaurants
+);
+
 // POST /users/me/check-password
 router.post('/me/check-password', isAuth, userController.checkMyPassword);
 

@@ -163,3 +163,31 @@ export async function toggleRestaurantLike(req, res) {
       .json({ message: '레스토랑 반응 저장 중 오류가 발생했습니다.' });
   }
 }
+
+export async function unlikeRestaurant(req, res) {
+  const restaurantId = req.params.id;
+  const userId = req.userId;
+
+  try {
+    const restaurant = await restaurantRepository.getRestaurantById(
+      restaurantId
+    );
+    if (!restaurant) {
+      return res.status(404).json({ message: '식당을 찾을 수 없습니다.' });
+    }
+
+    const existing = await restaurantLikeRepository.findByRestaurantAndUser(
+      userId,
+      restaurantId
+    );
+    if (existing) {
+      await restaurantLikeRepository.remove(userId, restaurantId);
+      await restaurantRepository.decreaseInLikeCount(restaurantId);
+    }
+
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: '찜 해제 중 오류가 발생했습니다.' });
+  }
+}

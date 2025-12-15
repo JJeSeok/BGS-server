@@ -18,6 +18,9 @@ router.post('/', restaurantController.createRestaurant);
 // POST /restaurants/:id/likes
 router.post('/:id/likes', isAuth, restaurantController.toggleRestaurantLike);
 
+// DELETE /restaurants/:id/likes
+router.delete('/:id/likes', isAuth, restaurantController.unlikeRestaurant);
+
 // PUT /restaurants/:id
 router.put('/:id', restaurantController.updateRestaurant);
 

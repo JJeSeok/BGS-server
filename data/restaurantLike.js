@@ -27,6 +27,15 @@ export async function findByRestaurantAndUser(user_id, restaurant_id) {
   return RestaurantLike.findOne({ where: { user_id, restaurant_id } });
 }
 
+export async function getRestaurantIdsByUserId(user_id) {
+  const rows = await RestaurantLike.findAll({
+    where: { user_id },
+    attributes: ['restaurant_id'],
+    raw: true,
+  });
+  return rows.map((r) => r.restaurant_id);
+}
+
 export async function remove(user_id, restaurant_id) {
   return RestaurantLike.findOne({ where: { user_id, restaurant_id } }) //
     .then((like) => like.destroy());
