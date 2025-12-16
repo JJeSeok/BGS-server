@@ -63,6 +63,10 @@ export const User = sequelize.define(
       allowNull: false,
       unique: true,
     },
+    profile_image_url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   { timestamps: false }
 );

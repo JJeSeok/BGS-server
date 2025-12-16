@@ -5,6 +5,7 @@ import { body } from 'express-validator';
 import { validate } from '../middleware/validator.js';
 import { isAuth } from '../middleware/auth.js';
 import { pwdLimiter } from '../middleware/rate-limiter.js';
+import { uploadProfileImage } from '../middleware/uploadProfileImage.js';
 
 const router = express.Router();
 
@@ -290,5 +291,16 @@ router.patch(
   validateUpdateProfile,
   userController.updateMyProfile
 );
+
+// PUT /users/me/profile-image
+router.put(
+  '/me/profile-image',
+  isAuth,
+  uploadProfileImage.single('image'),
+  userController.updateMyProfileImage
+);
+
+// DELETE /users/me/profile-image
+router.delete('/me/profile-image', isAuth, userController.deleteMyProfileImage);
 
 export default router;

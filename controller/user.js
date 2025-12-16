@@ -9,6 +9,7 @@ import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
 import { sendMail } from '../utils/mailer.js';
 import { config } from '../config.js';
+import { getProfileImageFilePath, safeUnlink } from '../utils/file.js';
 
 export async function signup(req, res) {
   const { username, password, name, birth, gender, email, phone } = req.body;
@@ -319,4 +320,58 @@ export async function getMyLikedRestaurants(req, res) {
   }));
 
   res.status(200).json(data);
+}
+
+export async function updateMyProfileImage(req, res) {
+  try {
+    const userId = req.userId;
+
+    if (!req.file) {
+      return res.status(400).json({ message: '업로드된 파일이 없습니다.' });
+    }
+
+    const user = await userRepository.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const newUrl = `/uploads/profiles/${req.file.filename}`;
+
+    if (user.profile_image_url) {
+      const oldUrl = getProfileImageFilePath(user.profile_image_url);
+      await safeUnlink(oldUrl);
+    }
+
+    const updated = await userRepository.update(userId, {
+      profile_image_url: newUrl,
+    });
+
+    return res.status(200).json({ profileImageUrl: updated.profile_image_url });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '프로필 이미지 변경 중 오류가 발생했습니다.' });
+  }
+}
+
+export async function deleteMyProfileImage(req, res) {
+  try {
+    const userId = req.userId;
+
+    const user = await userRepository.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const oldUrl = getProfileImageFilePath(user.profile_image_url);
+    await safeUnlink(oldUrl);
+
+    const updated = await userRepository.update(userId, {
+      profile_image_url: null,
+    });
+
+    return res.status(200).json({ profileImageUrl: updated.profile_image_url });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '프로필 이미지 삭제 중 오류가 발생했습니다.' });
+  }
 }

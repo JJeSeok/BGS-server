@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const UPLOADS_REVIEWS_DIR = path.join(__dirname, '..', 'uploads', 'reviews');
+const UPLOADS_PROFILES_DIR = path.join(__dirname, '..', 'uploads', 'profiles');
 
 export function getReviewImageFilePath(url) {
   const prefix = '/uploads/reviews/';
@@ -13,6 +14,14 @@ export function getReviewImageFilePath(url) {
 
   const filename = url.slice(prefix.length);
   return path.join(UPLOADS_REVIEWS_DIR, filename);
+}
+
+export function getProfileImageFilePath(url) {
+  const prefix = '/uploads/profiles/';
+  if (!url.startsWith(prefix)) return null;
+
+  const filename = url.slice(prefix.length);
+  return path.join(UPLOADS_PROFILES_DIR, filename);
 }
 
 export async function safeUnlink(filePath) {
