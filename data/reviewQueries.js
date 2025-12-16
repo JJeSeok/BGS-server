@@ -17,7 +17,7 @@ export async function getAllByRestaurantId(restaurant_id) {
       },
       {
         model: User,
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'profile_image_url'],
         required: true,
       },
     ],
@@ -41,7 +41,7 @@ export async function getAllByUserId(user_id) {
       },
       {
         model: User,
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'profile_image_url'],
         required: true,
       },
     ],
@@ -103,7 +103,6 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
       });
 
       deletedImageUrls = imagesToDelete.map((img) => img.url);
-      console.log(deletedImageUrls);
 
       await ReviewImage.destroy({
         where: { id: deletedIds, review_id: reviewId },

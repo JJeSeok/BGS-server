@@ -244,6 +244,7 @@ function toReviewDTO(reviews) {
       restaurantId: r.restaurant_id,
       userId: r.user_id,
       userName: r.user.name,
+      userProfileImage: r.user.profile_image_url,
       rating: r.rating,
       ratingCategory: r.ratingCategory,
       content: r.content,
