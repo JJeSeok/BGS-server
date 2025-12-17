@@ -4,6 +4,7 @@ import * as restaurantRepository from '../data/restaurant.js';
 import * as reviewImageRepository from '../data/reviewImage.js';
 import * as reviewQueries from '../data/reviewQueries.js';
 import * as reviewReactionRepository from '../data/reviewReaction.js';
+import * as userBlockRepository from '../data/userBlock.js';
 import { getReviewImageFilePath, safeUnlink } from '../utils/file.js';
 
 export async function getReviews(req, res) {
@@ -12,10 +13,16 @@ export async function getReviews(req, res) {
     return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
   }
 
+  const blockedIds = req.userId
+    ? await userBlockRepository.getBlockedUserIds(req.userId)
+    : [];
   let reviews;
 
   if (restaurantId) {
-    reviews = await reviewQueries.getAllByRestaurantId(restaurantId);
+    reviews = await reviewQueries.getAllByRestaurantId(
+      restaurantId,
+      blockedIds
+    );
   } else if (userId) {
     reviews = await reviewQueries.getAllByUserId(userId);
   }
@@ -26,9 +33,12 @@ export async function getReviews(req, res) {
 
   const baseDtos = toReviewDTO(reviews);
   const reviewIds = baseDtos.map((r) => r.id);
-  const [countsMap, userReactionsMap] = await Promise.all([
+  const [countsMap, userReactionsMap, stats] = await Promise.all([
     reviewReactionRepository.getCountsForReviews(reviewIds),
     reviewReactionRepository.getUserReactionsForReviews(reviewIds, req.userId),
+    restaurantId
+      ? reviewRepository.getRestaurantReviewStats(restaurantId)
+      : null,
   ]);
 
   const data = baseDtos.map((r) => {
@@ -43,7 +53,17 @@ export async function getReviews(req, res) {
     };
   });
 
-  res.status(200).json(data);
+  if (restaurantId) {
+    return res.status(200).json({
+      meta: {
+        totalCount: stats?.totalCount ?? 0,
+        avgRating: stats?.avgRating ?? null,
+      },
+      data,
+    });
+  }
+
+  return res.status(200).json(data);
 }
 
 export async function getReview(req, res) {
@@ -184,7 +204,12 @@ export async function deleteReview(req, res) {
       .json({ message: '리뷰를 삭제할 권한이 없거나 존재하지 않습니다.' });
   }
 
-  res.sendStatus(204);
+  const restaurantId = review.restaurant_id;
+  const stats = await reviewRepository.getRestaurantReviewStats(restaurantId);
+
+  return res.status(200).json({
+    meta: { totalCount: stats.totalCount, avgRating: stats.avgRating },
+  });
 }
 
 export async function toggleReviewReaction(req, res) {

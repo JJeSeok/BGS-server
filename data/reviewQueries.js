@@ -1,11 +1,17 @@
+import { Op } from 'sequelize';
 import { sequelize } from '../db/database.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
 
-export async function getAllByRestaurantId(restaurant_id) {
-  const reviews = await Review.findAll({
-    where: { restaurant_id },
+export async function getAllByRestaurantId(restaurant_id, blockedUserIds) {
+  const where = { restaurant_id };
+  if (blockedUserIds.length > 0) {
+    where.user_id = { [Op.notIn]: blockedUserIds };
+  }
+
+  return Review.findAll({
+    where,
     include: [
       {
         model: ReviewImage,
@@ -23,8 +29,6 @@ export async function getAllByRestaurantId(restaurant_id) {
     ],
     order: [['createdAt', 'DESC']],
   });
-
-  return reviews;
 }
 
 export async function getAllByUserId(user_id) {

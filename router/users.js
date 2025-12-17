@@ -303,4 +303,13 @@ router.put(
 // DELETE /users/me/profile-image
 router.delete('/me/profile-image', isAuth, userController.deleteMyProfileImage);
 
+// POST /users/me/blocks/:blockedUserId
+router.post('/me/blocks/:blockedUserId', isAuth, userController.blockUser);
+
+// DELETE /users/me/blocks/:blockedUserId
+router.delete('/me/blocks/:blockedUserId', isAuth, userController.unblockUser);
+
+// GET /users/me/blocks
+router.get('/me/blocks', isAuth, userController.getMyBlocks);
+
 export default router;

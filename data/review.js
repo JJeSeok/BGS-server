@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { col, DataTypes, fn } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Review = sequelize.define(
@@ -89,4 +89,21 @@ export async function findRestaurantIdsByUserId(user_id) {
     raw: true,
   });
   return rows.map((r) => r.restaurant_id);
+}
+
+export async function getRestaurantReviewStats(restaurant_id) {
+  const row = await Review.findOne({
+    where: { restaurant_id },
+    attributes: [
+      [fn('COUNT', col('id')), 'totalCount'],
+      [fn('AVG', col('rating')), 'avgRating'],
+    ],
+    raw: true,
+  });
+
+  const totalCount = Number(row?.totalCount || 0);
+  let avgRating = Number(row?.avgRating || 0);
+  if (avgRating) avgRating = Math.round(avgRating * 10) / 20;
+
+  return { totalCount, avgRating };
 }

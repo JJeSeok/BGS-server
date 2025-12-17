@@ -6,6 +6,7 @@ import * as pwResetRepository from '../data/passwordReset.js';
 import * as reviewRepository from '../data/review.js';
 import * as restaurantRepository from '../data/restaurant.js';
 import * as restaurantLikeRepository from '../data/restaurantLike.js';
+import * as userBlockRepository from '../data/userBlock.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
 import { sendMail } from '../utils/mailer.js';
 import { config } from '../config.js';
@@ -374,4 +375,58 @@ export async function deleteMyProfileImage(req, res) {
       .status(500)
       .json({ message: '프로필 이미지 삭제 중 오류가 발생했습니다.' });
   }
+}
+
+export async function blockUser(req, res) {
+  const blockerId = req.userId;
+  const blockedId = Number(req.params.blockedUserId);
+
+  if (!Number.isInteger(blockedId) || blockedId <= 0) {
+    return res.status(400).json({ message: '잘못된 사용자 ID입니다.' });
+  }
+  if (blockedId === blockerId) {
+    return res
+      .status(400)
+      .json({ message: '자기 자신은 블라인드할 수 없습니다.' });
+  }
+
+  const target = await userRepository.findById(blockedId);
+  if (!target) {
+    return res.status(404).json({ message: '대상 사용자를 찾을 수 없습니다.' });
+  }
+
+  const already = await userBlockRepository.existsBlock(blockerId, blockedId);
+  if (already) {
+    return res.status(200).json({ message: '이미 블라인드된 사용자입니다.' });
+  }
+
+  await userBlockRepository.create(blockerId, blockedId);
+  return res.status(201).json({ message: '블라인드 처리되었습니다.' });
+}
+
+export async function unblockUser(req, res) {
+  const blockerId = req.userId;
+  const blockedId = Number(req.params.blockedUserId);
+
+  if (!Number.isInteger(blockedId) || blockedId <= 0) {
+    return res.status(400).json({ message: '잘못된 사용자 ID입니다.' });
+  }
+
+  await userBlockRepository.remove(blockerId, blockedId);
+  return res.sendStatus(204);
+}
+
+export async function getMyBlocks(req, res) {
+  const blockerId = req.userId;
+  const rows = await userBlockRepository.getBlockedUsers(blockerId);
+
+  const data = rows
+    .map((r) => r.Blocked)
+    .filter(Boolean)
+    .map((u) => ({
+      id: u.id,
+      name: u.name,
+      profileImageUrl: u.profile_image_url,
+    }));
+  return res.status(200).json(data);
 }
