@@ -35,3 +35,12 @@ export async function safeUnlink(filePath) {
     }
   }
 }
+
+export async function safeUnlinkMany(filePaths = []) {
+  await Promise.allSettled(filePaths.filter(Boolean).map((p) => safeUnlink(p)));
+}
+
+export async function safeUnlinkManyByUrls(urls = []) {
+  const paths = urls.map(getReviewImageFilePath).filter(Boolean);
+  await safeUnlinkMany(paths);
+}

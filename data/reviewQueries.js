@@ -143,3 +143,35 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
     return { review, deletedImageUrls };
   });
 }
+
+export async function deleteReviewWithImageUrls(reviewId, userId) {
+  const review = await Review.findOne({
+    where: { id: reviewId, user_id: userId },
+    attributes: ['id', 'restaurant_id'],
+    include: [
+      {
+        model: ReviewImage,
+        as: 'images',
+        attributes: ['url'],
+        required: false,
+      },
+    ],
+  });
+
+  if (!review) {
+    return { deleted: false, restaurantId: null, deletedImageUrls: [] };
+  }
+
+  const restaurantId = review.restaurant_id;
+  const deletedImageUrls = (review.images ?? []).map((img) => img.url);
+
+  const deletedCount = await Review.destroy({
+    where: { id: reviewId, user_id: userId },
+  });
+
+  return {
+    deleted: deletedCount > 0,
+    restaurantId,
+    deletedImageUrls: deletedCount > 0 ? deletedImageUrls : [],
+  };
+}
