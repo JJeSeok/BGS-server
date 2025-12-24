@@ -1,6 +1,8 @@
 import * as restaurantRepository from '../data/restaurant.js';
 import * as restaurantPhotoRepository from '../data/restaurantPhoto.js';
 import * as restaurantLikeRepository from '../data/restaurantLike.js';
+import * as restaurantQueries from '../data/restaurantQueries.js';
+import { safeUnlinkManyByUrls } from '../utils/file.js';
 
 export async function getRestaurants(req, res) {
   const rows = await restaurantRepository.getAllRestaurants();
@@ -86,13 +88,24 @@ export async function updateRestaurant(req, res) {
 
 export async function deleteRestaurant(req, res) {
   const restaurantId = req.params.id;
-  const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
-  if (!restaurant) {
-    return res.sendStatus(404);
-  }
 
-  await restaurantRepository.remove(restaurantId);
-  res.sendStatus(204);
+  try {
+    const { deleted, deletedImageUrls } =
+      await restaurantQueries.deleteRestaurant(restaurantId);
+
+    if (!deleted) {
+      return res.status(404).json({ message: '식당이 존재하지 않습니다.' });
+    }
+
+    await safeUnlinkManyByUrls(deletedImageUrls);
+
+    return res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '식당 삭제 중 오류가 발생했습니다.' });
+  }
 }
 
 function toCardDto(r) {
