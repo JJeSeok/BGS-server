@@ -25,16 +25,34 @@ export async function getReviews(req, res) {
 
   let reviews;
 
+  let hasMore = false;
+  let nextCursor = null;
+
   if (restaurantId) {
-    reviews = await reviewQueries.getAllByRestaurantId(
+    const cursorObj = parseCursor(req.query.cursor);
+    const category = req.query.category ?? null;
+
+    const result = await reviewQueries.getAllByRestaurantIdKeyset(
       restaurantId,
-      blockedIds
+      blockedIds,
+      cursorObj,
+      category
     );
 
+    reviews = result.rows;
+    hasMore = result.hasMore;
+    nextCursor = result.nextCursor;
+
     if (!reviews || reviews.length === 0) {
-      return res
-        .status(200)
-        .json({ meta: { totalCount: 0, avgRating: null }, data: [] });
+      return res.stats(200).json({
+        meta: {
+          totalCount: 0,
+          avgRating: null,
+          ratingCounts: { good: 0, ok: 0, bad: 0 },
+        },
+        page: { limit: 5, hasMore: false, nextCursor: null },
+        data: [],
+      });
     }
   } else if (userId) {
     reviews = await reviewQueries.getAllByUserId(userId);
@@ -46,6 +64,7 @@ export async function getReviews(req, res) {
 
   const baseDtos = toReviewDTO(reviews);
   const reviewIds = baseDtos.map((r) => r.id);
+
   const [countsMap, userReactionsMap, stats] = await Promise.all([
     reviewReactionRepository.getCountsForReviews(reviewIds),
     reviewReactionRepository.getUserReactionsForReviews(reviewIds, req.userId),
@@ -71,7 +90,9 @@ export async function getReviews(req, res) {
       meta: {
         totalCount: stats?.totalCount ?? 0,
         avgRating: stats?.avgRating ?? null,
+        ratingCounts: stats?.ratingCounts ?? { good: 0, ok: 0, bad: 0 },
       },
+      page: { limit: 5, hasMore, nextCursor },
       data,
     });
   }
@@ -225,7 +246,11 @@ export async function deleteReview(req, res) {
     const stats = await reviewRepository.getRestaurantReviewStats(restaurantId);
 
     return res.status(200).json({
-      meta: { totalCount: stats.totalCount, avgRating: stats.avgRating },
+      meta: {
+        totalCount: stats.totalCount,
+        avgRating: stats.avgRating,
+        ratingCounts: stats.ratingCounts,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -306,4 +331,16 @@ function toReviewDTO(reviews) {
       })),
     };
   });
+}
+
+function parseCursor(cursor) {
+  if (!cursor || typeof cursor !== 'string') return null;
+  const [createdAtStr, idStr] = cursor.split('|');
+  if (!createdAtStr || !idStr) return null;
+
+  const createdAt = new Date(createdAtStr);
+  const id = Number(idStr);
+
+  if (Number.isNaN(createdAt.getTime()) || !Number.isFinite(id)) return null;
+  return { createdAt, id };
 }

@@ -101,9 +101,19 @@ export async function getRestaurantReviewStats(restaurant_id) {
     raw: true,
   });
 
+  const counts = await Review.findAll({
+    where: { restaurant_id },
+    attributes: ['ratingCategory', [fn('COUNT', col('id')), 'cnt']],
+    group: ['ratingCategory'],
+    raw: true,
+  });
+
   const totalCount = Number(row?.totalCount || 0);
   let avgRating = Number(row?.avgRating || 0);
   if (avgRating) avgRating = Math.round(avgRating * 10) / 20;
 
-  return { totalCount, avgRating };
+  const map = { good: 0, ok: 0, bad: 0 };
+  for (const r of counts) map[r.ratingCategory] = Number(r.cnt);
+
+  return { totalCount, avgRating, ratingCounts: map };
 }

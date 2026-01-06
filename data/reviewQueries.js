@@ -4,6 +4,63 @@ import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
 
+const LIMIT = 5;
+const ALLOWED = new Set(['good', 'ok', 'bad']);
+
+export async function getAllByRestaurantIdKeyset(
+  restaurant_id,
+  blockedUserIds,
+  cursor,
+  category
+) {
+  const where = { restaurant_id };
+  if (blockedUserIds.length > 0) {
+    where.user_id = { [Op.notIn]: blockedUserIds };
+  }
+  if (cursor) {
+    where[Op.or] = [
+      { createdAt: { [Op.lt]: cursor.createdAt } },
+      { createdAt: cursor.createdAt, id: { [Op.lt]: cursor.id } },
+    ];
+  }
+  if (category && ALLOWED.has(category)) {
+    where.ratingCategory = category;
+  }
+
+  const rows = await Review.findAll({
+    where,
+    include: [
+      {
+        model: ReviewImage,
+        as: 'images',
+        attributes: ['id', 'url', 'width', 'height', 'sort_order'],
+        required: false,
+        order: [['sort_order', 'ASC']],
+        separate: true,
+      },
+      {
+        model: User,
+        attributes: ['id', 'name', 'profile_image_url'],
+        required: true,
+      },
+    ],
+    order: [
+      ['createdAt', 'DESC'],
+      ['id', 'DESC'],
+    ],
+    limit: LIMIT + 1,
+  });
+
+  const hasMore = rows.length > LIMIT;
+  const sliced = hasMore ? rows.slice(0, LIMIT) : rows;
+
+  const last = sliced[sliced.length - 1];
+  const nextCursor =
+    hasMore && last ? `${last.createdAt.toISOString()}|${last.id}` : null;
+
+  return { rows: sliced, hasMore, nextCursor };
+}
+
 export async function getAllByRestaurantId(restaurant_id, blockedUserIds) {
   const where = { restaurant_id };
   if (blockedUserIds.length > 0) {
