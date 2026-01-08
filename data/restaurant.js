@@ -106,7 +106,7 @@ function resolveOrderBy(sort) {
   return SORT_MAP[sort] ?? SORT_MAP.default;
 }
 
-export async function getAllRestaurants({ sort, sido } = {}) {
+export async function getAllRestaurants({ sort, sido, q } = {}) {
   const orderBy = resolveOrderBy(sort);
   const where = [];
   const replacements = {};
@@ -115,6 +115,22 @@ export async function getAllRestaurants({ sort, sido } = {}) {
     where.push('r.sido = :sido');
     replacements.sido = sido;
   }
+
+  const fields = ['r.name', 'r.category', 'r.sido', 'r.sigugun', 'r.dongmyun'];
+
+  const tokens = String(q ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  tokens.forEach((t, idx) => {
+    const key = `q${idx}`;
+    replacements[key] = `%${t}%`;
+
+    const orGroup = fields.map((f) => `${f} LIKE :${key}`).join(' OR ');
+    where.push(`(${orGroup})`);
+  });
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 

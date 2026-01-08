@@ -5,8 +5,8 @@ import * as restaurantQueries from '../data/restaurantQueries.js';
 import { safeUnlinkManyByUrls } from '../utils/file.js';
 
 export async function getRestaurants(req, res) {
-  const { sort, sido } = req.query;
-  const rows = await restaurantRepository.getAllRestaurants({ sort, sido });
+  const { sort, sido, q } = req.query;
+  const rows = await restaurantRepository.getAllRestaurants({ sort, sido, q });
   const data = rows.map(toCardDto);
   res.status(200).json(data);
 }
