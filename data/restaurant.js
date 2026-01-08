@@ -91,24 +91,39 @@ export const Restaurant = sequelize.define(
   }
 );
 
-const ATTRS = [
-  'id',
-  'name',
-  'category',
-  'sido',
-  'sigugun',
-  'dongmyun',
-  ['main_image_url', 'mainImageUrl'],
-  ['rating_avg', 'ratingAvg'],
-  ['review_count', 'reviewCount'],
-];
+const SORT_MAP = {
+  // 평점순
+  rating: 'ratingAvg DESC, reviewCount DESC, likeCount DESC, r.id ASC',
+  views: 'r.view_count DESC, likeCount DESC, reviewCount DESC, r.id ASC',
+  likes: 'likeCount DESC, reviewCount DESC, ratingAvg DESC, r.id ASC',
+  reviews: 'reviewCount DESC, ratingAvg DESC, likeCount DESC, r.id ASC',
+  // 거리순
+  default: 'r.id ASC',
+};
 
-export async function getAllRestaurants() {
+function resolveOrderBy(sort) {
+  if (!sort) return SORT_MAP.default;
+  return SORT_MAP[sort] ?? SORT_MAP.default;
+}
+
+export async function getAllRestaurants({ sort, sido } = {}) {
+  const orderBy = resolveOrderBy(sort);
+  const where = [];
+  const replacements = {};
+
+  if (sido && typeof sido === 'string') {
+    where.push('r.sido = :sido');
+    replacements.sido = sido;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
   const rows = await sequelize.query(
-    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, COALESCE(s.reviewCount, 0) AS reviewCount, COALESCE(s.avgRating, 0) AS ratingAvg
-    FROM restaurants AS r LEFT JOIN (SELECT restaurant_id, COUNT(*) AS reviewCount, AVG(rating) AS avgRating FROM reviews GROUP BY restaurant_id) AS s ON r.id = s.restaurant_id
-    ORDER BY r.id ASC`,
-    { type: QueryTypes.SELECT }
+    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, r.view_count AS viewCount, COALESCE(s.reviewCount, 0) AS reviewCount, COALESCE(s.avgRating, 0) AS ratingAvg, COALESCE(l.likeCount, 0) AS likeCount
+    FROM restaurants AS r LEFT JOIN (SELECT restaurant_id, COUNT(*) AS reviewCount, AVG(rating) AS avgRating FROM reviews GROUP BY restaurant_id) AS s ON r.id = s.restaurant_id LEFT JOIN (SELECT restaurant_id, COUNT(*) AS likeCount FROM restaurant_likes GROUP BY restaurant_id) AS l ON r.id = l.restaurant_id
+    ${whereSql}
+    ORDER BY ${orderBy}`,
+    { type: QueryTypes.SELECT, replacements }
   );
 
   return rows;
