@@ -6,6 +6,7 @@ import { ReviewImage } from './reviewImage.js';
 import { ReviewReaction } from './reviewReaction.js';
 import { RestaurantLike } from './restaurantLike.js';
 import { UserBlock } from './userBlock.js';
+import { RestaurantRequest } from './restaurantRequest.js';
 
 RestaurantPhoto.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
@@ -78,3 +79,16 @@ UserBlock.belongsTo(User, {
 
 User.hasMany(UserBlock, { as: 'Blocking', foreignKey: 'blocker_user_id' });
 User.hasMany(UserBlock, { as: 'BlockedBy', foreignKey: 'blocked_user_id' });
+
+RestaurantRequest.belongsTo(User, {
+  foreignKey: 'requested_by',
+  as: 'requester',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});
+RestaurantRequest.belongsTo(User, {
+  foreignKey: 'reviewed_by',
+  as: 'reviewer',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});

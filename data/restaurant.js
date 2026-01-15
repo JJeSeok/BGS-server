@@ -84,6 +84,18 @@ export const Restaurant = sequelize.define(
     description: {
       type: DataTypes.TEXT,
     },
+    lat: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+    },
+    lng: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+    },
+    created_by: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+    },
   },
   {
     charset: 'utf8mb4',
