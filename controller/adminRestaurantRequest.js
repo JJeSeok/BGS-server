@@ -1,4 +1,8 @@
 import * as requestQueries from '../data/requestsQueries.js';
+import {
+  getRestaurantRequestImageFilePath,
+  safeUnlink,
+} from '../utils/file.js';
 
 export async function getAdminRestaurantRequests(req, res) {
   const status = req.query.status ?? 'pending';
@@ -57,6 +61,10 @@ export async function rejectRestaurantRequest(req, res) {
       req.userId,
       reason
     );
+
+    const filePath = getRestaurantRequestImageFilePath(result.imageUrl);
+    await safeUnlink(filePath);
+
     return res.status(200).json({ message: '반려되었습니다.', data: result });
   } catch (err) {
     if (err.code === 'NOT_FOUND') {

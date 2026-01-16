@@ -119,13 +119,16 @@ export async function rejectRequest(requestId, adminUserId, reason) {
       throw err;
     }
 
+    const imageUrl = reqRow.main_image_url;
+
     reqRow.status = 'rejected';
     reqRow.reviewed_by = adminUserId;
     reqRow.reviewed_at = new Date();
     reqRow.reject_reason = (reason ?? '').trim() || '사유 없음';
+    reqRow.main_image_url = null;
 
     await reqRow.save({ transaction: t });
 
-    return { requestId: reqRow.id };
+    return { requestId: reqRow.id, imageUrl };
   });
 }

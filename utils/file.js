@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 
 const UPLOADS_REVIEWS_DIR = path.join(__dirname, '..', 'uploads', 'reviews');
 const UPLOADS_PROFILES_DIR = path.join(__dirname, '..', 'uploads', 'profiles');
+const UPLOADS_REQUESTS_DIR = path.join(__dirname, '..', 'uploads', 'requests');
 
 export function getReviewImageFilePath(url) {
   const prefix = '/uploads/reviews/';
@@ -22,6 +23,14 @@ export function getProfileImageFilePath(url) {
 
   const filename = url.slice(prefix.length);
   return path.join(UPLOADS_PROFILES_DIR, filename);
+}
+
+export function getRestaurantRequestImageFilePath(url) {
+  const prefix = '/uploads/requests/';
+  if (!url.startsWith(prefix)) return null;
+
+  const filename = url.slice(prefix.length);
+  return path.join(UPLOADS_REQUESTS_DIR, filename);
 }
 
 export async function safeUnlink(filePath) {
