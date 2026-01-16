@@ -44,7 +44,7 @@ export async function getReviews(req, res) {
     nextCursor = result.nextCursor;
 
     if (!reviews || reviews.length === 0) {
-      return res.stats(200).json({
+      return res.status(200).json({
         meta: {
           totalCount: 0,
           avgRating: null,
