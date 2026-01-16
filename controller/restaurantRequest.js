@@ -9,10 +9,20 @@ function validateCreateBody(body) {
   return null;
 }
 
+function toNullableNumber(v) {
+  if (v === undefined || v === null || String(v).trim() === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function createRestaurantRequest(req, res) {
   const userId = req.userId;
   const msg = validateCreateBody(req.body);
   if (msg) return res.status(400).json({ message: msg });
+
+  const mainImageUrl = req.file
+    ? `/uploads/requests/${req.file.filename}`
+    : null;
 
   const restaurant = {
     name: String(req.body.name).trim(),
@@ -20,9 +30,7 @@ export async function createRestaurantRequest(req, res) {
     branch_info: req.body.branch_info
       ? String(req.body.branch_info).trim()
       : null,
-    main_image_url: req.body.main_image_url
-      ? String(req.body.main_image_url).trim()
-      : null,
+    main_image_url: mainImageUrl,
     sido: String(req.body.sido).trim(),
     sigugun: String(req.body.sigugun).trim(),
     dongmyun: String(req.body.dongmyun).trim(),
@@ -36,8 +44,8 @@ export async function createRestaurantRequest(req, res) {
     description: req.body.description
       ? String(req.body.description).trim()
       : null,
-    lat: req.body.lat ?? null,
-    lng: req.body.lng ?? null,
+    lat: toNullableNumber(req.body.lat),
+    lng: toNullableNumber(req.body.lng),
     status: 'pending',
     requested_by: userId,
   };
@@ -46,6 +54,11 @@ export async function createRestaurantRequest(req, res) {
     const row = await requestRepository.create(restaurant);
     return res.status(201).json({ id: row.id });
   } catch (err) {
+    if (err?.message === 'ONLY_IMAGE') {
+      return res
+        .status(400)
+        .json({ message: '이미지 파일만 업로드할 수 있습니다.' });
+    }
     console.error(err);
     return res
       .status(500)
