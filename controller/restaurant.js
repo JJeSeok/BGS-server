@@ -6,9 +6,19 @@ import { safeUnlinkManyByUrls } from '../utils/file.js';
 
 export async function getRestaurants(req, res) {
   const { sort, sido, q } = req.query;
-  const rows = await restaurantRepository.getAllRestaurants({ sort, sido, q });
-  const data = rows.map(toCardDto);
-  res.status(200).json(data);
+  const cursor = req.query.cursor ?? 0;
+
+  try {
+    const { rows, hasMore, nextCursor } =
+      await restaurantRepository.getAllRestaurants({ sort, sido, q, cursor });
+    const data = rows.map(toCardDto);
+    return res.status(200).json({ meta: { hasMore, nextCursor }, data });
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '레스토랑 목록 조회 중 오류가 발생했습니다.' });
+  }
 }
 
 export async function getRestaurant(req, res) {
@@ -19,7 +29,7 @@ export async function getRestaurant(req, res) {
   if (userId) {
     const like = await restaurantLikeRepository.findByRestaurantAndUser(
       userId,
-      restaurantId
+      restaurantId,
     );
     isLiked = !!like;
   }
@@ -27,9 +37,8 @@ export async function getRestaurant(req, res) {
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
   if (restaurant) {
-    const photos = await restaurantPhotoRepository.getRestaurantPhotos(
-      restaurantId
-    );
+    const photos =
+      await restaurantPhotoRepository.getRestaurantPhotos(restaurantId);
     await restaurantRepository.increaseInViewCount(restaurantId);
     res.status(200).json({ restaurant, photos, isLiked });
   } else
@@ -145,16 +154,15 @@ export async function toggleRestaurantLike(req, res) {
   const userId = req.userId;
 
   try {
-    const restaurant = await restaurantRepository.getRestaurantById(
-      restaurantId
-    );
+    const restaurant =
+      await restaurantRepository.getRestaurantById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ message: '식당을 찾을 수 없습니다.' });
     }
 
     const existing = await restaurantLikeRepository.findByRestaurantAndUser(
       userId,
-      restaurantId
+      restaurantId,
     );
 
     let isLiked;
@@ -183,16 +191,15 @@ export async function unlikeRestaurant(req, res) {
   const userId = req.userId;
 
   try {
-    const restaurant = await restaurantRepository.getRestaurantById(
-      restaurantId
-    );
+    const restaurant =
+      await restaurantRepository.getRestaurantById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ message: '식당을 찾을 수 없습니다.' });
     }
 
     const existing = await restaurantLikeRepository.findByRestaurantAndUser(
       userId,
-      restaurantId
+      restaurantId,
     );
     if (existing) {
       await restaurantLikeRepository.remove(userId, restaurantId);

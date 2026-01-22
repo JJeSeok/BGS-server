@@ -1,4 +1,4 @@
-import { DataTypes, Op, QueryTypes } from 'sequelize';
+import { DataTypes, INTEGER, Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Restaurant = sequelize.define(
@@ -61,12 +61,27 @@ export const Restaurant = sequelize.define(
       allowNull: false,
       defaultValue: 0.0,
     },
-    rating_count: {
+    rating_sum: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       defaultValue: 0,
     },
     review_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    good_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    ok_count: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    bad_count: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       defaultValue: 0,
@@ -100,8 +115,10 @@ export const Restaurant = sequelize.define(
   {
     charset: 'utf8mb4',
     collate: 'utf8mb4_0900_ai_ci',
-  }
+  },
 );
+
+const LIMIT = 20;
 
 const SORT_MAP = {
   // 평점순
@@ -118,10 +135,15 @@ function resolveOrderBy(sort) {
   return SORT_MAP[sort] ?? SORT_MAP.default;
 }
 
-export async function getAllRestaurants({ sort, sido, q } = {}) {
+export async function getAllRestaurants({ sort, sido, q, cursor = 0 } = {}) {
   const orderBy = resolveOrderBy(sort);
   const where = [];
   const replacements = {};
+
+  const safeCursor = Number(cursor) || 0;
+  where.push('r.id > :cursor');
+  replacements.cursor = safeCursor;
+  replacements.limit = LIMIT + 1;
 
   if (sido && typeof sido === 'string') {
     where.push('r.sido = :sido');
@@ -147,14 +169,20 @@ export async function getAllRestaurants({ sort, sido, q } = {}) {
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const rows = await sequelize.query(
-    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, r.view_count AS viewCount, COALESCE(s.reviewCount, 0) AS reviewCount, COALESCE(s.avgRating, 0) AS ratingAvg, COALESCE(l.likeCount, 0) AS likeCount
-    FROM restaurants AS r LEFT JOIN (SELECT restaurant_id, COUNT(*) AS reviewCount, AVG(rating) AS avgRating FROM reviews GROUP BY restaurant_id) AS s ON r.id = s.restaurant_id LEFT JOIN (SELECT restaurant_id, COUNT(*) AS likeCount FROM restaurant_likes GROUP BY restaurant_id) AS l ON r.id = l.restaurant_id
+    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, r.view_count AS viewCount, r.review_count AS reviewCount, r.rating_avg AS ratingAvg, r.like_count AS likeCount
+    FROM restaurants AS r
     ${whereSql}
-    ORDER BY ${orderBy}`,
-    { type: QueryTypes.SELECT, replacements }
+    ORDER BY ${orderBy}
+    LIMIT :limit`,
+    { type: QueryTypes.SELECT, replacements },
   );
 
-  return rows;
+  const hasMore = rows.length > LIMIT;
+  const sliced = hasMore ? rows.slice(0, LIMIT) : rows;
+
+  const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
+
+  return { rows: sliced, hasMore, nextCursor };
 }
 
 export async function getRestaurantById(id) {
@@ -163,7 +191,7 @@ export async function getRestaurantById(id) {
 
 export async function create(restaurant) {
   return Restaurant.create(restaurant).then((data) =>
-    getRestaurantById(data.dataValues.id)
+    getRestaurantById(data.dataValues.id),
   );
 }
 

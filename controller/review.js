@@ -5,6 +5,7 @@ import * as reviewImageRepository from '../data/reviewImage.js';
 import * as reviewQueries from '../data/reviewQueries.js';
 import * as reviewReactionRepository from '../data/reviewReaction.js';
 import * as userBlockRepository from '../data/userBlock.js';
+import * as restaurantStats from '../data/restaurantStats.js';
 import {
   getReviewImageFilePath,
   safeUnlink,
@@ -36,7 +37,7 @@ export async function getReviews(req, res) {
       restaurantId,
       blockedIds,
       cursorObj,
-      category
+      category,
     );
 
     reviews = result.rows;
@@ -140,7 +141,7 @@ export async function createReview(req, res) {
           rating: Rating,
           content: content.trim(),
         },
-        t
+        t,
       );
 
       if (req.files && req.files.length > 0) {
@@ -151,6 +152,12 @@ export async function createReview(req, res) {
         }));
         await reviewImageRepository.create(images, t);
       }
+
+      await restaurantStats.increaseReview({
+        restaurantId,
+        rating: Rating,
+        transaction: t,
+      });
 
       return review;
     });
@@ -196,7 +203,7 @@ export async function updateReview(req, res) {
           content,
           deletedImageIds,
         },
-        req.files || []
+        req.files || [],
       );
 
     if (!review) {
@@ -243,13 +250,17 @@ export async function deleteReview(req, res) {
 
     await safeUnlinkManyByUrls(deletedImageUrls);
 
-    const stats = await reviewRepository.getRestaurantReviewStats(restaurantId);
+    const r = await restaurantRepository.getRestaurantById(restaurantId);
 
     return res.status(200).json({
       meta: {
-        totalCount: stats.totalCount,
-        avgRating: stats.avgRating,
-        ratingCounts: stats.ratingCounts,
+        totalCount: r?.review_count ?? 0,
+        avgRating: r?.rating_avg ?? 0,
+        ratingCounts: {
+          good: r?.good_count ?? 0,
+          ok: r?.ok_count ?? 0,
+          bad: r?.bad_count ?? 0,
+        },
       },
     });
   } catch (err) {
@@ -281,7 +292,7 @@ export async function toggleReviewReaction(req, res) {
     const { userReaction } = await reviewReactionRepository.toggleReaction(
       reviewId,
       userId,
-      type
+      type,
     );
 
     const { likeCount, dislikeCount } =

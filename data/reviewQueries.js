@@ -3,6 +3,7 @@ import { sequelize } from '../db/database.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
+import * as restaurantStats from './restaurantStats.js';
 
 const LIMIT = 5;
 const ALLOWED = new Set(['good', 'ok', 'bad']);
@@ -11,7 +12,7 @@ export async function getAllByRestaurantIdKeyset(
   restaurant_id,
   blockedUserIds,
   cursor,
-  category
+  category,
 ) {
   const where = { restaurant_id };
   if (blockedUserIds.length > 0) {
@@ -141,12 +142,16 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
     const review = await Review.findOne({
       where: { id: reviewId, user_id: userId },
       transaction: t,
+      lock: t.LOCK.UPDATE,
     });
     if (!review) return null;
 
+    const oldRating = Number(review.rating);
+    const newRating = Number(payload.rating);
+
     await review.update(
-      { rating: payload.rating, content: payload.content.trim() },
-      { transaction: t }
+      { rating: newRating, content: payload.content.trim() },
+      { transaction: t },
     );
 
     let deletedIds = payload.deletedImageIds || [];
@@ -197,38 +202,65 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
       await ReviewImage.bulkCreate(images, { transaction: t });
     }
 
+    if (oldRating !== newRating) {
+      await restaurantStats.changeReviewRating({
+        restaurantId: review.restaurant_id,
+        oldRating,
+        newRating,
+        transaction: t,
+      });
+    }
+
     return { review, deletedImageUrls };
   });
 }
 
 export async function deleteReviewWithImageUrls(reviewId, userId) {
-  const review = await Review.findOne({
-    where: { id: reviewId, user_id: userId },
-    attributes: ['id', 'restaurant_id'],
-    include: [
-      {
-        model: ReviewImage,
-        as: 'images',
-        attributes: ['url'],
-        required: false,
-      },
-    ],
+  return sequelize.transaction(async (t) => {
+    const review = await Review.findOne({
+      where: { id: reviewId, user_id: userId },
+      attributes: ['id', 'restaurant_id', 'rating'],
+      include: [
+        {
+          model: ReviewImage,
+          as: 'images',
+          attributes: ['url'],
+          required: false,
+        },
+      ],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!review) {
+      return {
+        deleted: false,
+        restaurantId: null,
+        deletedImageUrls: [],
+      };
+    }
+
+    const restaurantId = review.restaurant_id;
+    const rating = review.rating;
+    const deletedImageUrls = (review.images ?? []).map((img) => img.url);
+
+    const deletedCount = await Review.destroy({
+      where: { id: reviewId, user_id: userId },
+      transaction: t,
+    });
+
+    if (deletedCount > 0) {
+      await restaurantStats.decreaseReview({
+        restaurantId,
+        rating,
+        transaction: t,
+      });
+    }
+
+    return {
+      deleted: deletedCount > 0,
+      restaurantId,
+      deletedImageUrls: deletedCount > 0 ? deletedImageUrls : [],
+    };
   });
-
-  if (!review) {
-    return { deleted: false, restaurantId: null, deletedImageUrls: [] };
-  }
-
-  const restaurantId = review.restaurant_id;
-  const deletedImageUrls = (review.images ?? []).map((img) => img.url);
-
-  const deletedCount = await Review.destroy({
-    where: { id: reviewId, user_id: userId },
-  });
-
-  return {
-    deleted: deletedCount > 0,
-    restaurantId,
-    deletedImageUrls: deletedCount > 0 ? deletedImageUrls : [],
-  };
 }
