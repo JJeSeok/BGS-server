@@ -119,17 +119,14 @@ export async function deleteRestaurant(req, res) {
 }
 
 function toCardDto(r) {
-  const rawAvg = Number(r.ratingAvg ?? r.rating_avg ?? 0);
-  const avg = Number.isNaN(rawAvg) ? 0 : Math.round(rawAvg * 10) / 20;
-
   return {
     id: r.id,
     name: r.name,
     category: r.category,
-    mainImageUrl: r.mainImageUrl ?? r.main_image_url,
+    mainImageUrl: r.main_image_url,
     rating: {
-      avg,
-      count: r.reviewCount ?? r.review_count ?? 0,
+      avg: Number(r.rating_avg),
+      count: r.review_count,
     },
     address: {
       sido: r.sido,

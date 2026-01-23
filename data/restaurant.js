@@ -1,4 +1,4 @@
-import { DataTypes, INTEGER, Op, QueryTypes } from 'sequelize';
+import { DataTypes, Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Restaurant = sequelize.define(
@@ -122,28 +122,96 @@ const LIMIT = 20;
 
 const SORT_MAP = {
   // 평점순
-  rating: 'ratingAvg DESC, reviewCount DESC, likeCount DESC, r.id ASC',
-  views: 'r.view_count DESC, likeCount DESC, reviewCount DESC, r.id ASC',
-  likes: 'likeCount DESC, reviewCount DESC, ratingAvg DESC, r.id ASC',
-  reviews: 'reviewCount DESC, ratingAvg DESC, likeCount DESC, r.id ASC',
+  rating: [
+    ['rating_avg', 'DESC'],
+    ['review_count', 'DESC'],
+    ['like_count', 'DESC'],
+    ['id', 'ASC'],
+  ],
+  views: [
+    ['view_count', 'DESC'],
+    ['like_count', 'DESC'],
+    ['review_count', 'DESC'],
+    ['id', 'ASC'],
+  ],
+  likes: [
+    ['like_count', 'DESC'],
+    ['review_count', 'DESC'],
+    ['rating_avg', 'DESC'],
+    ['id', 'ASC'],
+  ],
+  reviews: [
+    ['review_count', 'DESC'],
+    ['rating_avg', 'DESC'],
+    ['like_count', 'DESC'],
+    ['id', 'ASC'],
+  ],
   // 거리순
-  default: 'r.id ASC',
+  default: [['id', 'ASC']],
 };
 
-function resolveOrderBy(sort) {
+function resolveSort(sort) {
   if (!sort) return SORT_MAP.default;
   return SORT_MAP[sort] ?? SORT_MAP.default;
 }
 
-export async function getAllRestaurants({ sort, sido, q, cursor = 0 } = {}) {
-  const orderBy = resolveOrderBy(sort);
-  const where = [];
-  const replacements = {};
+function buildOrderBy(sortSpec) {
+  return sortSpec.map(([col, dir]) => `r.${col} ${dir}`).join(', ');
+}
 
-  const safeCursor = Number(cursor) || 0;
-  where.push('r.id > :cursor');
-  replacements.cursor = safeCursor;
-  replacements.limit = LIMIT + 1;
+function encodeCursor(obj) {
+  return Buffer.from(JSON.stringify(obj), 'utf8').toString('base64url');
+}
+
+function decodeCursor(cursor) {
+  if (!cursor) return null;
+  try {
+    const json = Buffer.from(String(cursor), 'base64url').toString('utf8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function buildKeysetWhere(sortSpec, cursorObj, replacements) {
+  if (!cursorObj) return { sql: '', ok: true };
+
+  for (const [col] of sortSpec) {
+    if (cursorObj[col] === undefined || cursorObj[col] === null) {
+      return { sql: '', ok: false };
+    }
+  }
+
+  const parts = [];
+
+  for (let i = 0; i < sortSpec.length; i++) {
+    const ands = [];
+
+    for (let j = 0; j < i; j++) {
+      const [prevCol] = sortSpec[j];
+      const key = `c_eq_${prevCol}`;
+      replacements[key] = cursorObj[prevCol];
+      ands.push(`r.${prevCol} = :${key}`);
+    }
+
+    const [col, dir] = sortSpec[i];
+    const op = dir === 'DESC' ? '<' : '>';
+    const key = `c_cmp_${col}`;
+    replacements[key] = cursorObj[col];
+    ands.push(`r.${col} ${op} :${key}`);
+
+    parts.push(`(${ands.join(' AND ')})`);
+  }
+
+  return { sql: `(${parts.join(' OR ')})`, ok: true };
+}
+
+export async function getAllRestaurants({ sort, sido, q, cursor } = {}) {
+  const sortSpec = resolveSort(sort);
+  const orderBy = buildOrderBy(sortSpec);
+
+  const where = [];
+  const replacements = { limit: LIMIT + 1 };
 
   if (sido && typeof sido === 'string') {
     where.push('r.sido = :sido');
@@ -166,10 +234,17 @@ export async function getAllRestaurants({ sort, sido, q, cursor = 0 } = {}) {
     where.push(`(${orGroup})`);
   });
 
+  const cursorObj = decodeCursor(cursor);
+  const keyset = buildKeysetWhere(sortSpec, cursorObj, replacements);
+
+  if (cursorObj && keyset.sql) {
+    where.push(keyset.sql);
+  }
+
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const rows = await sequelize.query(
-    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url AS mainImageUrl, r.view_count AS viewCount, r.review_count AS reviewCount, r.rating_avg AS ratingAvg, r.like_count AS likeCount
+    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
     FROM restaurants AS r
     ${whereSql}
     ORDER BY ${orderBy}
@@ -180,7 +255,13 @@ export async function getAllRestaurants({ sort, sido, q, cursor = 0 } = {}) {
   const hasMore = rows.length > LIMIT;
   const sliced = hasMore ? rows.slice(0, LIMIT) : rows;
 
-  const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
+  const nextCursor = hasMore
+    ? encodeCursor(
+        Object.fromEntries(
+          sortSpec.map(([col]) => [col, sliced[sliced.length - 1][col]]),
+        ),
+      )
+    : null;
 
   return { rows: sliced, hasMore, nextCursor };
 }
