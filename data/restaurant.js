@@ -115,10 +115,15 @@ export const Restaurant = sequelize.define(
   {
     charset: 'utf8mb4',
     collate: 'utf8mb4_0900_ai_ci',
+    indexes: [
+      { name: 'idx_restaurants_lat_lng', fields: ['lat', 'lng'] },
+      { name: 'idx_restaurant_sido', fields: ['sido'] },
+    ],
   },
 );
 
 const LIMIT = 20;
+const DEFAULT_RADIUS_KM = 5;
 
 const SORT_MAP = {
   // 평점순
@@ -146,7 +151,10 @@ const SORT_MAP = {
     ['like_count', 'DESC'],
     ['id', 'ASC'],
   ],
-  // 거리순
+  distance: [
+    ['distance_km', 'ASC'],
+    ['id', 'ASC'],
+  ],
   default: [['id', 'ASC']],
 };
 
@@ -155,8 +163,17 @@ function resolveSort(sort) {
   return SORT_MAP[sort] ?? SORT_MAP.default;
 }
 
+function colSql(col, { distanceRoundedSql } = {}) {
+  if (col === 'distance_km') return distanceRoundedSql;
+  return `r.${col}`;
+}
+
 function buildOrderBy(sortSpec) {
-  return sortSpec.map(([col, dir]) => `r.${col} ${dir}`).join(', ');
+  return sortSpec
+    .map(([col, dir]) =>
+      col === 'distance_km' ? `distance_km ${dir}` : `r.${col} ${dir}`,
+    )
+    .join(', ');
 }
 
 function encodeCursor(obj) {
@@ -173,11 +190,49 @@ function decodeCursor(cursor) {
   }
 }
 
-function buildKeysetWhere(sortSpec, cursorObj, replacements) {
+function haversineKmExprRaw() {
+  return `(6371 * 2 * ASIN(SQRT(
+    POW(SIN((RADIANS(r.lat) - RADIANS(:userLat)) / 2), 2)
+    + COS(RADIANS(:userLat)) * COS(RADIANS(r.lat))
+    * POW(SIN((RADIANS(r.lng) - RADIANS(:userLng)) / 2), 2)
+  )))`;
+}
+
+function haversineKmExprRounded() {
+  return `ROUND(${haversineKmExprRaw()}, 6)`;
+}
+
+function buildBoundingBox({ userLat, userLng, radiusKm }) {
+  const kmPerDegLat = 111.045;
+  const latRad = (userLat * Math.PI) / 180;
+  const kmPerDegLng = kmPerDegLat * Math.cos(latRad);
+
+  const safeKmPerDegLng = Math.max(kmPerDegLng, 0.000001);
+
+  const deltaLat = radiusKm / kmPerDegLat;
+  const deltaLng = radiusKm / safeKmPerDegLng;
+
+  return {
+    minLat: userLat - deltaLat,
+    maxLat: userLat + deltaLat,
+    minLng: userLng - deltaLng,
+    maxLng: userLng + deltaLng,
+  };
+}
+
+function buildKeysetWhere(
+  sortSpec,
+  cursorObj,
+  replacements,
+  { distanceRoundedSql } = {},
+) {
   if (!cursorObj) return { sql: '', ok: true };
 
   for (const [col] of sortSpec) {
     if (cursorObj[col] === undefined || cursorObj[col] === null) {
+      return { sql: '', ok: false };
+    }
+    if (col === 'distance_km' && !Number.isFinite(Number(cursorObj[col]))) {
       return { sql: '', ok: false };
     }
   }
@@ -191,14 +246,14 @@ function buildKeysetWhere(sortSpec, cursorObj, replacements) {
       const [prevCol] = sortSpec[j];
       const key = `c_eq_${prevCol}`;
       replacements[key] = cursorObj[prevCol];
-      ands.push(`r.${prevCol} = :${key}`);
+      ands.push(`${colSql(prevCol, { distanceRoundedSql })} = :${key}`);
     }
 
     const [col, dir] = sortSpec[i];
     const op = dir === 'DESC' ? '<' : '>';
     const key = `c_cmp_${col}`;
     replacements[key] = cursorObj[col];
-    ands.push(`r.${col} ${op} :${key}`);
+    ands.push(`${colSql(col, { distanceRoundedSql })} ${op} :${key}`);
 
     parts.push(`(${ands.join(' AND ')})`);
   }
@@ -206,7 +261,14 @@ function buildKeysetWhere(sortSpec, cursorObj, replacements) {
   return { sql: `(${parts.join(' OR ')})`, ok: true };
 }
 
-export async function getAllRestaurants({ sort, sido, q, cursor } = {}) {
+export async function getAllRestaurants({
+  sort,
+  sido,
+  q,
+  cursor,
+  lat,
+  lng,
+} = {}) {
   const sortSpec = resolveSort(sort);
   const orderBy = buildOrderBy(sortSpec);
 
@@ -234,8 +296,49 @@ export async function getAllRestaurants({ sort, sido, q, cursor } = {}) {
     where.push(`(${orGroup})`);
   });
 
+  const isDistance = sort === 'distance';
+
+  let selectDistanceSql = '';
+  let distanceRawSql = null;
+  let distanceRoundedSql = null;
+
+  if (isDistance) {
+    const userLat = Number(lat);
+    const userLng = Number(lng);
+
+    if (!Number.isFinite(userLat) || !Number.isFinite(userLng)) {
+      throw new Error('distance sort requires valid lat/lng');
+    }
+
+    replacements.userLat = userLat;
+    replacements.userLng = userLng;
+
+    const radiusKm = DEFAULT_RADIUS_KM;
+    replacements.radiusKm = radiusKm;
+
+    const box = buildBoundingBox({ userLat, userLng, radiusKm });
+    replacements.minLat = box.minLat;
+    replacements.maxLat = box.maxLat;
+    replacements.minLng = box.minLng;
+    replacements.maxLng = box.maxLng;
+
+    distanceRawSql = haversineKmExprRaw();
+    distanceRoundedSql = haversineKmExprRounded();
+
+    where.push('r.lat IS NOT NULL');
+    where.push('r.lng IS NOT NULL');
+    where.push('r.lat BETWEEN :minLat AND :maxLat');
+    where.push('r.lng BETWEEN :minLng AND :maxLng');
+
+    where.push(`${distanceRawSql} <= :radiusKm`);
+
+    selectDistanceSql = `, ${distanceRoundedSql} AS distance_km`;
+  }
+
   const cursorObj = decodeCursor(cursor);
-  const keyset = buildKeysetWhere(sortSpec, cursorObj, replacements);
+  const keyset = buildKeysetWhere(sortSpec, cursorObj, replacements, {
+    distanceRoundedSql,
+  });
 
   if (cursorObj && keyset.sql) {
     where.push(keyset.sql);
@@ -244,7 +347,9 @@ export async function getAllRestaurants({ sort, sido, q, cursor } = {}) {
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const rows = await sequelize.query(
-    `SELECT r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
+    `SELECT
+      r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
+      ${selectDistanceSql}
     FROM restaurants AS r
     ${whereSql}
     ORDER BY ${orderBy}

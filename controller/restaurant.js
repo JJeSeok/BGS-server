@@ -5,12 +5,19 @@ import * as restaurantQueries from '../data/restaurantQueries.js';
 import { safeUnlinkManyByUrls } from '../utils/file.js';
 
 export async function getRestaurants(req, res) {
-  const { sort, sido, q } = req.query;
+  const { sort, sido, q, lat, lng } = req.query;
   const cursor = req.query.cursor ?? 0;
 
   try {
     const { rows, hasMore, nextCursor } =
-      await restaurantRepository.getAllRestaurants({ sort, sido, q, cursor });
+      await restaurantRepository.getAllRestaurants({
+        sort,
+        sido,
+        q,
+        cursor,
+        lat,
+        lng,
+      });
     const data = rows.map(toCardDto);
     return res.status(200).json({ meta: { hasMore, nextCursor }, data });
   } catch (err) {
