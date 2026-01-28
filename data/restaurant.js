@@ -124,6 +124,7 @@ export const Restaurant = sequelize.define(
 
 const LIMIT = 20;
 const DEFAULT_RADIUS_KM = 5;
+const MYLOCATION_RADIUS_KM = 10;
 
 const SORT_MAP = {
   // 평점순
@@ -269,6 +270,9 @@ export async function getAllRestaurants({
   lat,
   lng,
 } = {}) {
+  let sortKey = sort;
+  if (sortKey === 'distance' && sido) sortKey = 'default';
+
   const sortSpec = resolveSort(sort);
   const orderBy = buildOrderBy(sortSpec);
 
@@ -296,24 +300,37 @@ export async function getAllRestaurants({
     where.push(`(${orGroup})`);
   });
 
+  const hasQuery = tokens.length > 0;
   const isDistance = sort === 'distance';
+
+  const userLat = Number(lat);
+  const userLng = Number(lng);
+  const hasUserLoc = Number.isFinite(userLat) && Number.isFinite(userLng);
+
+  let applyRadius = false;
+  let radiusKm = null;
+
+  if (isDistance) {
+    if (!hasUserLoc) {
+      throw new Error('distance sort requires valid lat/lng');
+    }
+
+    applyRadius = true;
+    radiusKm = DEFAULT_RADIUS_KM;
+  } else {
+    if (hasUserLoc && !hasQuery && !sido) {
+      applyRadius = true;
+      radiusKm = MYLOCATION_RADIUS_KM;
+    }
+  }
 
   let selectDistanceSql = '';
   let distanceRawSql = null;
   let distanceRoundedSql = null;
 
-  if (isDistance) {
-    const userLat = Number(lat);
-    const userLng = Number(lng);
-
-    if (!Number.isFinite(userLat) || !Number.isFinite(userLng)) {
-      throw new Error('distance sort requires valid lat/lng');
-    }
-
+  if (applyRadius) {
     replacements.userLat = userLat;
     replacements.userLng = userLng;
-
-    const radiusKm = DEFAULT_RADIUS_KM;
     replacements.radiusKm = radiusKm;
 
     const box = buildBoundingBox({ userLat, userLng, radiusKm });
@@ -332,7 +349,9 @@ export async function getAllRestaurants({
 
     where.push(`${distanceRawSql} <= :radiusKm`);
 
-    selectDistanceSql = `, ${distanceRoundedSql} AS distance_km`;
+    if (isDistance) {
+      selectDistanceSql = `, ${distanceRoundedSql} AS distance_km`;
+    }
   }
 
   const cursorObj = decodeCursor(cursor);
