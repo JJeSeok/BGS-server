@@ -125,9 +125,16 @@ export const Restaurant = sequelize.define(
 const LIMIT = 20;
 const DEFAULT_RADIUS_KM = 5;
 const MYLOCATION_RADIUS_KM = 10;
+const BAYES_M = 20;
+const POP_WEIGHT = 0.05;
 
 const SORT_MAP = {
-  // 평점순
+  default: [
+    ['rec_score', 'DESC'],
+    ['review_count', 'DESC'],
+    ['like_count', 'DESC'],
+    ['id', 'ASC'],
+  ],
   rating: [
     ['rating_avg', 'DESC'],
     ['review_count', 'DESC'],
@@ -156,7 +163,6 @@ const SORT_MAP = {
     ['distance_km', 'ASC'],
     ['id', 'ASC'],
   ],
-  default: [['id', 'ASC']],
 };
 
 function resolveSort(sort) {
@@ -164,16 +170,19 @@ function resolveSort(sort) {
   return SORT_MAP[sort] ?? SORT_MAP.default;
 }
 
-function colSql(col, { distanceRoundedSql } = {}) {
+function colSql(col, { distanceRoundedSql, recScoreRoundedSql } = {}) {
   if (col === 'distance_km') return distanceRoundedSql;
+  if (col === 'rec_score') return recScoreRoundedSql;
   return `r.${col}`;
 }
 
 function buildOrderBy(sortSpec) {
   return sortSpec
-    .map(([col, dir]) =>
-      col === 'distance_km' ? `distance_km ${dir}` : `r.${col} ${dir}`,
-    )
+    .map(([col, dir]) => {
+      if (col === 'distance_km') return `distance_km ${dir}`;
+      if (col === 'rec_score') return `rec_score ${dir}`;
+      return `r.${col} ${dir}`;
+    })
     .join(', ');
 }
 
@@ -221,11 +230,34 @@ function buildBoundingBox({ userLat, userLng, radiusKm }) {
   };
 }
 
+function bayesScoreExprRaw() {
+  return `(
+  (r.review_count / (r.review_count + :bayes_m)) * r.rating_avg
+  + (:bayes_m / (r.review_count + :bayes_m)) * stats.global_avg
+  )`;
+}
+
+function bayesScoreExprRounded() {
+  return `ROUND(${bayesScoreExprRaw()}, 6)`;
+}
+
+function popExprRaw() {
+  return `(LOG(1 + r.view_count) + 2 * LOG(1 + r.like_count))`;
+}
+
+function recScoreExprRaw({ bayesRoundedSql }) {
+  return `(${bayesRoundedSql} + (:pop_weight * ${popExprRaw()}))`;
+}
+
+function recScoreExprRounded({ bayesRoundedSql }) {
+  return `ROUND(${recScoreExprRaw({ bayesRoundedSql })}, 6)`;
+}
+
 function buildKeysetWhere(
   sortSpec,
   cursorObj,
   replacements,
-  { distanceRoundedSql } = {},
+  { distanceRoundedSql, recScoreRoundedSql } = {},
 ) {
   if (!cursorObj) return { sql: '', ok: true };
 
@@ -234,6 +266,9 @@ function buildKeysetWhere(
       return { sql: '', ok: false };
     }
     if (col === 'distance_km' && !Number.isFinite(Number(cursorObj[col]))) {
+      return { sql: '', ok: false };
+    }
+    if (col === 'rec_score' && !Number.isFinite(Number(cursorObj[col]))) {
       return { sql: '', ok: false };
     }
   }
@@ -247,19 +282,27 @@ function buildKeysetWhere(
       const [prevCol] = sortSpec[j];
       const key = `c_eq_${prevCol}`;
       replacements[key] = cursorObj[prevCol];
-      ands.push(`${colSql(prevCol, { distanceRoundedSql })} = :${key}`);
+      ands.push(
+        `${colSql(prevCol, { distanceRoundedSql, recScoreRoundedSql })} = :${key}`,
+      );
     }
 
     const [col, dir] = sortSpec[i];
     const op = dir === 'DESC' ? '<' : '>';
     const key = `c_cmp_${col}`;
     replacements[key] = cursorObj[col];
-    ands.push(`${colSql(col, { distanceRoundedSql })} ${op} :${key}`);
+    ands.push(
+      `${colSql(col, { distanceRoundedSql, recScoreRoundedSql })} ${op} :${key}`,
+    );
 
     parts.push(`(${ands.join(' AND ')})`);
   }
 
   return { sql: `(${parts.join(' OR ')})`, ok: true };
+}
+
+function sortSpecNeeds(sortSpec, colName) {
+  return sortSpec.some(([c]) => c === colName);
 }
 
 export async function getAllRestaurants({
@@ -354,9 +397,27 @@ export async function getAllRestaurants({
     }
   }
 
+  const needRecScore = sortSpecNeeds(sortSpec, 'rec_score');
+  let bayesRoundedSql = null;
+  let selectBayesSql = ''; // 추천순 구현 끝나면 삭제
+  let recScoreRoundedSql = null;
+  let selectRecSql = '';
+
+  if (needRecScore) {
+    replacements.bayes_m = BAYES_M;
+    replacements.pop_weight = POP_WEIGHT;
+
+    bayesRoundedSql = bayesScoreExprRounded();
+    selectBayesSql = `, ${bayesRoundedSql} AS bayes_score`; // 추천순 구현 끝나면 삭제
+
+    recScoreRoundedSql = recScoreExprRounded({ bayesRoundedSql });
+    selectRecSql = `, ${recScoreRoundedSql} AS rec_score`;
+  }
+
   const cursorObj = decodeCursor(cursor);
   const keyset = buildKeysetWhere(sortSpec, cursorObj, replacements, {
     distanceRoundedSql,
+    recScoreRoundedSql,
   });
 
   if (cursorObj && keyset.sql) {
@@ -365,11 +426,19 @@ export async function getAllRestaurants({
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
+  const statsJoin = needRecScore
+    ? `CROSS JOIN (SELECT AVG(rating_avg) AS global_avg FROM restaurants) AS stats`
+    : '';
+
+  // 추천순 구현 끝나면 selectBayesSql 삭제
   const rows = await sequelize.query(
     `SELECT
       r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
       ${selectDistanceSql}
+      ${selectBayesSql}
+      ${selectRecSql}
     FROM restaurants AS r
+    ${statsJoin}
     ${whereSql}
     ORDER BY ${orderBy}
     LIMIT :limit`,
