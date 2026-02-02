@@ -65,11 +65,45 @@ export async function cohortLikeCount(
     `
     INSERT INTO restaurant_cohort_stats (restaurant_id, age_band, gender, like_count, review_count, rating_sum, updatedAt)
     VALUES (:restaurantId, :ageBand, :gender, :initialLike, 0, 0, NOW())
-    ON DUPLICATE KEY UPDATE like_count = GREATEST(like_count + :delta, 0)
+    ON DUPLICATE KEY UPDATE
+      like_count = GREATEST(like_count + :delta, 0),
+      updatedAt = NOW()
     `,
     {
       type: QueryTypes.INSERT,
       replacements: { restaurantId, ageBand, gender, delta, initialLike },
+      transaction,
+    },
+  );
+}
+
+export async function cohortReviewStats(
+  { restaurantId, ageBand, gender, deltaCount, deltaRating },
+  { transaction } = {},
+) {
+  const initReviewCount = deltaCount > 0 ? deltaCount : 0;
+  const initRating = deltaRating > 0 ? deltaRating : 0;
+
+  await sequelize.query(
+    `
+    INSERT INTO restaurant_cohort_stats (restaurant_id, age_band, gender, like_count, review_count, rating_sum, updatedAt)
+    VALUES (:restaurantId, :ageBand, :gender, 0, :initReviewCount, :initRating, NOW())
+    ON DUPLICATE KEY UPDATE
+      review_count = GREATEST(review_count + :deltaCount, 0),
+      rating_sum = GREATEST(rating_sum + :deltaRating, 0),
+      updatedAt = NOW()
+    `,
+    {
+      type: QueryTypes.INSERT,
+      replacements: {
+        restaurantId,
+        ageBand,
+        gender,
+        initReviewCount,
+        initRating,
+        deltaCount,
+        deltaRating,
+      },
       transaction,
     },
   );

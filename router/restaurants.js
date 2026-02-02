@@ -7,7 +7,7 @@ import { optionalAuth } from '../middleware/optionalAuth.js';
 const router = express.Router();
 
 // GET /restaurants
-router.get('/', restaurantController.getRestaurants);
+router.get('/', optionalAuth, restaurantController.getRestaurants);
 
 // GET /restaurants/:id
 router.get('/:id', optionalAuth, restaurantController.getRestaurant);

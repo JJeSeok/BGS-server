@@ -3,7 +3,9 @@ import { sequelize } from '../db/database.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
+import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 import * as restaurantStats from './restaurantStats.js';
+import * as cohortRepository from '../data/restaurantCohortStat.js';
 
 const LIMIT = 5;
 const ALLOWED = new Set(['good', 'ok', 'bad']);
@@ -209,6 +211,24 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
         newRating,
         transaction: t,
       });
+
+      const user = await User.findByPk(userId, { transaction: t });
+      const ageBand = calcAgeBandFromBirth(user?.birth);
+      const gender = mapGenderToCohort(user?.gender);
+      const delta = newRating - oldRating;
+
+      if (ageBand != null && delta !== 0) {
+        await cohortRepository.cohortReviewStats(
+          {
+            restaurantId: review.restaurant_id,
+            ageBand,
+            gender,
+            deltaCount: 0,
+            deltaRating: delta,
+          },
+          { transaction: t },
+        );
+      }
     }
 
     return { review, deletedImageUrls };
@@ -255,6 +275,23 @@ export async function deleteReviewWithImageUrls(reviewId, userId) {
         rating,
         transaction: t,
       });
+
+      const user = await User.findByPk(userId, { transaction: t });
+      const ageBand = calcAgeBandFromBirth(user?.birth);
+      const gender = mapGenderToCohort(user?.gender);
+
+      if (ageBand != null) {
+        await cohortRepository.cohortReviewStats(
+          {
+            restaurantId,
+            ageBand,
+            gender,
+            deltaCount: -1,
+            deltaRating: -rating,
+          },
+          { transaction: t },
+        );
+      }
     }
 
     return {

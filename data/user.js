@@ -73,7 +73,7 @@ export const User = sequelize.define(
       defaultValue: 'user',
     },
   },
-  { timestamps: false }
+  { timestamps: false },
 );
 
 export async function create(user) {
@@ -92,8 +92,8 @@ export async function findByPhone(phone) {
   return User.findOne({ where: { phone } });
 }
 
-export async function findById(id) {
-  return User.findByPk(id);
+export async function findById(id, { transaction } = {}) {
+  return User.findByPk(id, { transaction });
 }
 
 export async function updatePassword(user, password) {

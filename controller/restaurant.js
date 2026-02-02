@@ -6,7 +6,7 @@ import { safeUnlinkManyByUrls } from '../utils/file.js';
 
 export async function getRestaurants(req, res) {
   const { sort, sido, q, lat, lng } = req.query;
-  const cursor = req.query.cursor ?? 0;
+  const cursor = req.query.cursor ?? null;
 
   try {
     const { rows, hasMore, nextCursor } =
@@ -17,6 +17,7 @@ export async function getRestaurants(req, res) {
         cursor,
         lat,
         lng,
+        userId: req.userId ?? null,
       });
     const data = rows.map(toCardDto);
     return res.status(200).json({ meta: { hasMore, nextCursor }, data });
@@ -141,6 +142,7 @@ function toCardDto(r) {
       dongmyun: r.dongmyun,
     },
     bayes: r.bayes_score, // 추천순 구현 끝나면 삭제
+    global: r.global_score, // 추천순 구현 끝나면 삭제
     rec: r.rec_score, // 추천순 구현 끝나면 삭제
     like: r.like_count, // 추천순 구현 끝나면 삭제
     view: r.view_count, // 추천순 구현 끝나면 삭제

@@ -1,5 +1,7 @@
 import { DataTypes, Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
+import { User } from './user.js';
+import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 
 export const Restaurant = sequelize.define(
   'restaurant',
@@ -125,8 +127,11 @@ export const Restaurant = sequelize.define(
 const LIMIT = 20;
 const DEFAULT_RADIUS_KM = 5;
 const MYLOCATION_RADIUS_KM = 10;
-const BAYES_M = 20;
-const POP_WEIGHT = 0.05;
+const M_GLOBAL = 20;
+const M_COHORT = 15;
+const W_POP = 0.05;
+const W_COHORT_R = 0.15;
+const W_COHORT_POP = 0.02;
 
 const SORT_MAP = {
   default: [
@@ -231,26 +236,65 @@ function buildBoundingBox({ userLat, userLng, radiusKm }) {
 }
 
 function bayesScoreExprRaw() {
+  // 추천순 구현 끝나면 삭제
   return `(
-  (r.review_count / (r.review_count + :bayes_m)) * r.rating_avg
-  + (:bayes_m / (r.review_count + :bayes_m)) * stats.global_avg
+  (r.review_count / (r.review_count + :mGlobal)) * r.rating_avg
+  + (:mGlobal / (r.review_count + :mGlobal)) * stats.global_avg
   )`;
 }
 
 function bayesScoreExprRounded() {
+  // 추천순 구현 끝나면 삭제
   return `ROUND(${bayesScoreExprRaw()}, 6)`;
 }
 
 function popExprRaw() {
+  // 추천순 구현 끝나면 삭제
   return `(LOG(1 + r.view_count) + 2 * LOG(1 + r.like_count))`;
 }
 
 function recScoreExprRaw({ bayesRoundedSql }) {
-  return `(${bayesRoundedSql} + (:pop_weight * ${popExprRaw()}))`;
+  // 추천순 구현 끝나면 삭제
+  return `(${bayesRoundedSql} + (:wPop * ${popExprRaw()}))`;
 }
 
 function recScoreExprRounded({ bayesRoundedSql }) {
+  // 추천순 구현 끝나면 삭제
   return `ROUND(${recScoreExprRaw({ bayesRoundedSql })}, 6)`;
+}
+
+function buildRecScoreSql({ withCohort }) {
+  const baseBayes = `(
+    (r.review_count / (r.review_count + :mGlobal)) * r.rating_avg
+    + (:mGlobal / (r.review_count + :mGlobal)) * stats.global_avg
+  )`;
+
+  const basePop = `(LOG(1 + r.view_count) + 2 * LOG(1 + r.like_count)) * :wPop`;
+
+  if (!withCohort) {
+    return `ROUND((${baseBayes} + ${basePop}), 6)`;
+  }
+
+  const cohortAvg = `
+    CASE WHEN cs.review_count > 0
+      THEN (cs.rating_sum / cs.review_count) / 2
+      ELSE NULL
+    END
+  `;
+
+  const cohortBayes = `
+    CASE WHEN cs.review_count > 0 THEN (
+      (cs.review_count / (cs.review_count + :mCohort)) * (${cohortAvg})
+      + (:mCohort / (cs.review_count + :mCohort)) * stats.global_avg
+    ) ELSE stats.global_avg END
+  `;
+
+  const cohortBonus = `
+    (GREATEST((${cohortBayes}) - stats.global_avg, 0) * :wCohortR)
+    + (LOG(1 + COALESCE(cs.like_count, 0)) * :wCohortPop)
+  `;
+
+  return `ROUND((${baseBayes} + ${basePop} + ${cohortBonus}), 6)`;
 }
 
 function buildKeysetWhere(
@@ -312,11 +356,12 @@ export async function getAllRestaurants({
   cursor,
   lat,
   lng,
+  userId,
 } = {}) {
   let sortKey = sort;
   if (sortKey === 'distance' && sido) sortKey = 'default';
 
-  const sortSpec = resolveSort(sort);
+  const sortSpec = resolveSort(sortKey);
   const orderBy = buildOrderBy(sortSpec);
 
   const where = [];
@@ -344,7 +389,7 @@ export async function getAllRestaurants({
   });
 
   const hasQuery = tokens.length > 0;
-  const isDistance = sort === 'distance';
+  const isDistance = sortKey === 'distance';
 
   const userLat = Number(lat);
   const userLng = Number(lng);
@@ -397,20 +442,57 @@ export async function getAllRestaurants({
     }
   }
 
-  const needRecScore = sortSpecNeeds(sortSpec, 'rec_score');
-  let bayesRoundedSql = null;
-  let selectBayesSql = ''; // 추천순 구현 끝나면 삭제
+  const needRec = sortSpecNeeds(sortSpec, 'rec_score');
+  let joinSql = '';
   let recScoreRoundedSql = null;
   let selectRecSql = '';
 
-  if (needRecScore) {
-    replacements.bayes_m = BAYES_M;
-    replacements.pop_weight = POP_WEIGHT;
+  let bayesRoundedSql = null; // 추천순 구현 끝나면 삭제
+  let selectBayesSql = ''; // 추천순 구현 끝나면 삭제
+  let globalScoreRoundedSql = null; // 추천순 구현 끝나면 삭제
+  let selectGlobalSql = ''; // 추천순 구현 끝나면 삭제
 
-    bayesRoundedSql = bayesScoreExprRounded();
+  if (needRec) {
+    replacements.mGlobal = M_GLOBAL;
+    replacements.wPop = W_POP;
+
+    let withCohort = false;
+
+    if (userId) {
+      const user = await User.findByPk(userId);
+      const ageBand = calcAgeBandFromBirth(user?.birth);
+      const gender = mapGenderToCohort(user?.gender);
+
+      if (ageBand != null) {
+        withCohort = true;
+        replacements.ageBand = ageBand;
+        replacements.gender = gender;
+
+        replacements.mCohort = M_COHORT;
+        replacements.wCohortR = W_COHORT_R;
+        replacements.wCohortPop = W_COHORT_POP;
+
+        joinSql = `
+          LEFT JOIN restaurant_cohort_stats cs
+            ON cs.restaurant_id = r.id
+            AND cs.age_band = :ageBand
+            AND cs.gender = :gender
+        `;
+      }
+    }
+
+    joinSql = `
+      CROSS JOIN (SELECT AVG(rating_avg) AS global_avg FROM restaurants) AS stats
+      ${joinSql}
+    `;
+
+    bayesRoundedSql = bayesScoreExprRounded(); // 추천순 구현 끝나면 삭제
     selectBayesSql = `, ${bayesRoundedSql} AS bayes_score`; // 추천순 구현 끝나면 삭제
 
-    recScoreRoundedSql = recScoreExprRounded({ bayesRoundedSql });
+    globalScoreRoundedSql = recScoreExprRounded({ bayesRoundedSql }); // 추천순 구현 끝나면 삭제
+    selectGlobalSql = `, ${globalScoreRoundedSql} AS global_score`; // 추천순 구현 끝나면 삭제
+
+    recScoreRoundedSql = buildRecScoreSql({ withCohort });
     selectRecSql = `, ${recScoreRoundedSql} AS rec_score`;
   }
 
@@ -420,25 +502,20 @@ export async function getAllRestaurants({
     recScoreRoundedSql,
   });
 
-  if (cursorObj && keyset.sql) {
-    where.push(keyset.sql);
-  }
+  if (cursorObj && keyset.sql) where.push(keyset.sql);
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  const statsJoin = needRecScore
-    ? `CROSS JOIN (SELECT AVG(rating_avg) AS global_avg FROM restaurants) AS stats`
-    : '';
-
-  // 추천순 구현 끝나면 selectBayesSql 삭제
+  // 추천순 구현 끝나면 selectBayesSql, selectGlobalSql 삭제
   const rows = await sequelize.query(
     `SELECT
       r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
       ${selectDistanceSql}
       ${selectBayesSql}
+      ${selectGlobalSql}
       ${selectRecSql}
     FROM restaurants AS r
-    ${statsJoin}
+    ${joinSql}
     ${whereSql}
     ORDER BY ${orderBy}
     LIMIT :limit`,

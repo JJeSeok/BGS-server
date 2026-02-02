@@ -6,11 +6,14 @@ import * as reviewQueries from '../data/reviewQueries.js';
 import * as reviewReactionRepository from '../data/reviewReaction.js';
 import * as userBlockRepository from '../data/userBlock.js';
 import * as restaurantStats from '../data/restaurantStats.js';
+import * as userRepository from '../data/user.js';
+import * as cohortRepository from '../data/restaurantCohortStat.js';
 import {
   getReviewImageFilePath,
   safeUnlink,
   safeUnlinkManyByUrls,
 } from '../utils/file.js';
+import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 
 export async function getReviews(req, res) {
   const { restaurantId, userId } = req.query;
@@ -158,6 +161,17 @@ export async function createReview(req, res) {
         rating: Rating,
         transaction: t,
       });
+
+      const user = await userRepository.findById(userId, { transaction: t });
+      const ageBand = calcAgeBandFromBirth(user?.birth);
+      const gender = mapGenderToCohort(user?.gender);
+
+      if (ageBand != null) {
+        await cohortRepository.cohortReviewStats(
+          { restaurantId, ageBand, gender, deltaCount: 1, deltaRating: Rating },
+          { transaction: t },
+        );
+      }
 
       return review;
     });
