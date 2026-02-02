@@ -141,11 +141,6 @@ function toCardDto(r) {
       sigugun: r.sigugun,
       dongmyun: r.dongmyun,
     },
-    bayes: r.bayes_score, // 추천순 구현 끝나면 삭제
-    global: r.global_score, // 추천순 구현 끝나면 삭제
-    rec: r.rec_score, // 추천순 구현 끝나면 삭제
-    like: r.like_count, // 추천순 구현 끝나면 삭제
-    view: r.view_count, // 추천순 구현 끝나면 삭제
   };
 }
 

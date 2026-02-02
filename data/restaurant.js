@@ -235,34 +235,6 @@ function buildBoundingBox({ userLat, userLng, radiusKm }) {
   };
 }
 
-function bayesScoreExprRaw() {
-  // 추천순 구현 끝나면 삭제
-  return `(
-  (r.review_count / (r.review_count + :mGlobal)) * r.rating_avg
-  + (:mGlobal / (r.review_count + :mGlobal)) * stats.global_avg
-  )`;
-}
-
-function bayesScoreExprRounded() {
-  // 추천순 구현 끝나면 삭제
-  return `ROUND(${bayesScoreExprRaw()}, 6)`;
-}
-
-function popExprRaw() {
-  // 추천순 구현 끝나면 삭제
-  return `(LOG(1 + r.view_count) + 2 * LOG(1 + r.like_count))`;
-}
-
-function recScoreExprRaw({ bayesRoundedSql }) {
-  // 추천순 구현 끝나면 삭제
-  return `(${bayesRoundedSql} + (:wPop * ${popExprRaw()}))`;
-}
-
-function recScoreExprRounded({ bayesRoundedSql }) {
-  // 추천순 구현 끝나면 삭제
-  return `ROUND(${recScoreExprRaw({ bayesRoundedSql })}, 6)`;
-}
-
 function buildRecScoreSql({ withCohort }) {
   const baseBayes = `(
     (r.review_count / (r.review_count + :mGlobal)) * r.rating_avg
@@ -447,11 +419,6 @@ export async function getAllRestaurants({
   let recScoreRoundedSql = null;
   let selectRecSql = '';
 
-  let bayesRoundedSql = null; // 추천순 구현 끝나면 삭제
-  let selectBayesSql = ''; // 추천순 구현 끝나면 삭제
-  let globalScoreRoundedSql = null; // 추천순 구현 끝나면 삭제
-  let selectGlobalSql = ''; // 추천순 구현 끝나면 삭제
-
   if (needRec) {
     replacements.mGlobal = M_GLOBAL;
     replacements.wPop = W_POP;
@@ -486,12 +453,6 @@ export async function getAllRestaurants({
       ${joinSql}
     `;
 
-    bayesRoundedSql = bayesScoreExprRounded(); // 추천순 구현 끝나면 삭제
-    selectBayesSql = `, ${bayesRoundedSql} AS bayes_score`; // 추천순 구현 끝나면 삭제
-
-    globalScoreRoundedSql = recScoreExprRounded({ bayesRoundedSql }); // 추천순 구현 끝나면 삭제
-    selectGlobalSql = `, ${globalScoreRoundedSql} AS global_score`; // 추천순 구현 끝나면 삭제
-
     recScoreRoundedSql = buildRecScoreSql({ withCohort });
     selectRecSql = `, ${recScoreRoundedSql} AS rec_score`;
   }
@@ -506,13 +467,10 @@ export async function getAllRestaurants({
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  // 추천순 구현 끝나면 selectBayesSql, selectGlobalSql 삭제
   const rows = await sequelize.query(
     `SELECT
       r.id, r.name, r.category, r.sido, r.sigugun, r.dongmyun, r.main_image_url, r.view_count, r.review_count, r.rating_avg, r.like_count
       ${selectDistanceSql}
-      ${selectBayesSql}
-      ${selectGlobalSql}
       ${selectRecSql}
     FROM restaurants AS r
     ${joinSql}
