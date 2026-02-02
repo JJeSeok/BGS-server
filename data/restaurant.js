@@ -483,12 +483,20 @@ export async function increaseInViewCount(id) {
   return Restaurant.increment('view_count', { by: 1, where: { id } });
 }
 
-export async function increaseInLikeCount(id) {
-  return Restaurant.increment('like_count', { by: 1, where: { id } });
+export async function increaseInLikeCount(id, { transaction } = {}) {
+  return Restaurant.increment('like_count', {
+    by: 1,
+    where: { id },
+    transaction,
+  });
 }
 
-export async function decreaseInLikeCount(id) {
-  return Restaurant.increment('like_count', { by: -1, where: { id } });
+export async function decreaseInLikeCount(id, { transaction } = {}) {
+  return Restaurant.increment('like_count', {
+    by: -1,
+    where: { id },
+    transaction,
+  });
 }
 
 export async function findByIds(ids) {

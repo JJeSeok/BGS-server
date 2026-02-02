@@ -20,11 +20,18 @@ export const RestaurantLike = sequelize.define(
   },
   {
     indexes: [{ unique: true, fields: ['user_id', 'restaurant_id'] }],
-  }
+  },
 );
 
-export async function findByRestaurantAndUser(user_id, restaurant_id) {
-  return RestaurantLike.findOne({ where: { user_id, restaurant_id } });
+export async function findByRestaurantAndUser(
+  user_id,
+  restaurant_id,
+  { transaction } = {},
+) {
+  return RestaurantLike.findOne({
+    where: { user_id, restaurant_id },
+    transaction,
+  });
 }
 
 export async function getRestaurantIdsByUserId(user_id) {
@@ -36,11 +43,13 @@ export async function getRestaurantIdsByUserId(user_id) {
   return rows.map((r) => r.restaurant_id);
 }
 
-export async function remove(user_id, restaurant_id) {
-  return RestaurantLike.findOne({ where: { user_id, restaurant_id } }) //
-    .then((like) => like.destroy());
+export async function remove(user_id, restaurant_id, { transaction } = {}) {
+  return RestaurantLike.destroy({
+    where: { user_id, restaurant_id },
+    transaction,
+  });
 }
 
-export async function create(user_id, restaurant_id) {
-  return RestaurantLike.create({ user_id, restaurant_id });
+export async function create(user_id, restaurant_id, { transaction } = {}) {
+  return RestaurantLike.create({ user_id, restaurant_id }, { transaction });
 }

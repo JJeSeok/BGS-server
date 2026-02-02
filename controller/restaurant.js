@@ -162,35 +162,16 @@ export async function toggleRestaurantLike(req, res) {
   const userId = req.userId;
 
   try {
-    const restaurant =
-      await restaurantRepository.getRestaurantById(restaurantId);
-    if (!restaurant) {
-      return res.status(404).json({ message: '식당을 찾을 수 없습니다.' });
-    }
-
-    const existing = await restaurantLikeRepository.findByRestaurantAndUser(
-      userId,
-      restaurantId,
-    );
-
-    let isLiked;
-    if (existing) {
-      await restaurantLikeRepository.remove(userId, restaurantId);
-      await restaurantRepository.decreaseInLikeCount(restaurantId);
-      isLiked = false;
-    } else {
-      await restaurantLikeRepository.create(userId, restaurantId);
-      await restaurantRepository.increaseInLikeCount(restaurantId);
-      isLiked = true;
-    }
-
-    const updated = await restaurantRepository.getRestaurantById(restaurantId);
-    return res.json({ likeCount: updated.like_count, isLiked });
+    const result = await restaurantQueries.toggleLike({ userId, restaurantId });
+    return res.json(result);
   } catch (err) {
     console.error(err);
-    return res
-      .status(500)
-      .json({ message: '레스토랑 반응 저장 중 오류가 발생했습니다.' });
+    const status = err.status || 500;
+    const message =
+      status === 404
+        ? err.message
+        : '레스토랑 반응 저장 중 오류가 발생했습니다.';
+    return res.status(status).json({ message });
   }
 }
 
