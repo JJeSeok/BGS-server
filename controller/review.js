@@ -49,11 +49,6 @@ export async function getReviews(req, res) {
 
     if (!reviews || reviews.length === 0) {
       return res.status(200).json({
-        meta: {
-          totalCount: 0,
-          avgRating: null,
-          ratingCounts: { good: 0, ok: 0, bad: 0 },
-        },
         page: { limit: 5, hasMore: false, nextCursor: null },
         data: [],
       });
@@ -69,12 +64,9 @@ export async function getReviews(req, res) {
   const baseDtos = toReviewDTO(reviews);
   const reviewIds = baseDtos.map((r) => r.id);
 
-  const [countsMap, userReactionsMap, stats] = await Promise.all([
+  const [countsMap, userReactionsMap] = await Promise.all([
     reviewReactionRepository.getCountsForReviews(reviewIds),
     reviewReactionRepository.getUserReactionsForReviews(reviewIds, req.userId),
-    restaurantId
-      ? reviewRepository.getRestaurantReviewStats(restaurantId)
-      : null,
   ]);
 
   const data = baseDtos.map((r) => {
@@ -91,11 +83,6 @@ export async function getReviews(req, res) {
 
   if (restaurantId) {
     return res.status(200).json({
-      meta: {
-        totalCount: stats?.totalCount ?? 0,
-        avgRating: stats?.avgRating ?? null,
-        ratingCounts: stats?.ratingCounts ?? { good: 0, ok: 0, bad: 0 },
-      },
       page: { limit: 5, hasMore, nextCursor },
       data,
     });
@@ -113,6 +100,25 @@ export async function getReview(req, res) {
 
   const data = toReviewDTO([review])[0];
   res.status(200).json(data);
+}
+
+export async function getReviewMeta(req, res) {
+  const { restaurantId } = req.query;
+  if (!restaurantId) {
+    return res.status(400).json({ message: 'restaurantId가 필요합니다.' });
+  }
+
+  const blockedIds = req.userId
+    ? await userBlockRepository.getBlockedUserIds(req.userId)
+    : [];
+  const stats = await reviewRepository.getRestaurantReviewStats(
+    restaurantId,
+    blockedIds,
+  );
+
+  return res.status(200).json({
+    meta: stats,
+  });
 }
 
 export async function createReview(req, res) {
@@ -264,19 +270,10 @@ export async function deleteReview(req, res) {
 
     await safeUnlinkManyByUrls(deletedImageUrls);
 
-    const r = await restaurantRepository.getRestaurantById(restaurantId);
+    const restaurant =
+      await restaurantRepository.getRestaurantById(restaurantId);
 
-    return res.status(200).json({
-      meta: {
-        totalCount: r?.review_count ?? 0,
-        avgRating: r?.rating_avg ?? 0,
-        ratingCounts: {
-          good: r?.good_count ?? 0,
-          ok: r?.ok_count ?? 0,
-          bad: r?.bad_count ?? 0,
-        },
-      },
-    });
+    return res.status(200).json(restaurant);
   } catch (err) {
     console.error(err);
     return res

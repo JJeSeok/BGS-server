@@ -1,4 +1,4 @@
-import { col, DataTypes, fn } from 'sequelize';
+import { DataTypes, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const Review = sequelize.define(
@@ -42,7 +42,7 @@ export const Review = sequelize.define(
       { fields: ['user_id', 'createdAt'] },
       { fields: ['restaurant_id', 'ratingCategory', 'createdAt', 'id'] },
     ],
-  }
+  },
 );
 
 export async function getAllByRestaurantId(restaurant_id) {
@@ -68,7 +68,7 @@ export async function update(id, user_id, data, transaction) {
     (review) => {
       if (!review) return null;
       return review.update(data, options);
-    }
+    },
   );
 }
 
@@ -78,7 +78,7 @@ export async function remove(id, user_id, transaction) {
     (review) => {
       if (!review) return null;
       return review.destroy();
-    }
+    },
   );
 }
 
@@ -91,29 +91,35 @@ export async function findRestaurantIdsByUserId(user_id) {
   return rows.map((r) => r.restaurant_id);
 }
 
-export async function getRestaurantReviewStats(restaurant_id) {
-  const row = await Review.findOne({
-    where: { restaurant_id },
-    attributes: [
-      [fn('COUNT', col('id')), 'totalCount'],
-      [fn('AVG', col('rating')), 'avgRating'],
-    ],
-    raw: true,
+export async function getRestaurantReviewStats(restaurant_id, blockedIds = []) {
+  const hasBlocked = Array.isArray(blockedIds) && blockedIds.length > 0;
+
+  const sql = `
+    SELECT
+      COUNT(*) AS totalCount,
+      SUM(CASE WHEN r.ratingCategory = 'good' THEN 1 ELSE 0 END) AS goodCount,
+      SUM(CASE WHEN r.ratingCategory = 'ok' THEN 1 ELSE 0 END) AS okCount,
+      SUM(CASE WHEN r.ratingCategory = 'bad' THEN 1 ELSE 0 END) AS badCount
+    FROM reviews r
+    WHERE r.restaurant_id = :restaurant_id
+    ${hasBlocked ? 'AND r.user_id NOT IN (:blockedIds)' : ''}
+  `;
+
+  const rows = await sequelize.query(sql, {
+    type: QueryTypes.SELECT,
+    replacements: hasBlocked
+      ? { restaurant_id, blockedIds }
+      : { restaurant_id },
   });
 
-  const counts = await Review.findAll({
-    where: { restaurant_id },
-    attributes: ['ratingCategory', [fn('COUNT', col('id')), 'cnt']],
-    group: ['ratingCategory'],
-    raw: true,
-  });
+  const row = rows?.[0] ?? {};
 
-  const totalCount = Number(row?.totalCount || 0);
-  let avgRating = Number(row?.avgRating || 0);
-  if (avgRating) avgRating = Math.round(avgRating * 10) / 20;
+  const totalCount = Number(row.totalCount ?? 0);
+  const ratingCounts = {
+    good: Number(row.goodCount ?? 0),
+    ok: Number(row.okCount ?? 0),
+    bad: Number(row.badCount ?? 0),
+  };
 
-  const map = { good: 0, ok: 0, bad: 0 };
-  for (const r of counts) map[r.ratingCategory] = Number(r.cnt);
-
-  return { totalCount, avgRating, ratingCounts: map };
+  return { totalCount, ratingCounts };
 }

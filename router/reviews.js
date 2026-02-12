@@ -11,7 +11,10 @@ const router = express.Router();
 // GET /reviews?userId=:userId
 router.get('/', optionalAuth, reviewController.getReviews);
 
-// GET /reivews/:id
+// GET /reviews/meta?restaurantId=:restaurantId
+router.get('/meta', optionalAuth, reviewController.getReviewMeta);
+
+// GET /reviews/:id
 router.get('/:id', reviewController.getReview);
 
 // POST /reviews
@@ -19,7 +22,7 @@ router.post(
   '/',
   isAuth,
   upload.array('images', 30),
-  reviewController.createReview
+  reviewController.createReview,
 );
 
 // POST /reviews/:id/reactions
@@ -30,7 +33,7 @@ router.put(
   '/:id',
   isAuth,
   upload.array('images', 30),
-  reviewController.updateReview
+  reviewController.updateReview,
 );
 
 // DELETE /reviews/:id
