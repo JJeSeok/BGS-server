@@ -32,15 +32,8 @@ export const ReviewImage = sequelize.define(
   },
   {
     indexes: [{ fields: ['review_id', 'sort_order'] }],
-  }
+  },
 );
-
-export async function getAllByReviewId(review_id) {
-  return ReviewImage.findAll({
-    where: { review_id },
-    order: [['sort_order', 'ASC']],
-  });
-}
 
 export async function create(images, transaction) {
   const options = transaction ? { transaction } : {};
