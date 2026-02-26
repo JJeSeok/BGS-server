@@ -45,14 +45,6 @@ export const Review = sequelize.define(
   },
 );
 
-export async function getAllByRestaurantId(restaurant_id) {
-  return Review.findAll({ where: { restaurant_id } });
-}
-
-export async function getAllByUserId(user_id) {
-  return Review.findAll({ where: { user_id } });
-}
-
 export async function getReviewById(id) {
   return Review.findByPk(id);
 }
@@ -60,26 +52,6 @@ export async function getReviewById(id) {
 export async function create(review, transaction) {
   const options = transaction ? { transaction } : {};
   return Review.create(review, options); //
-}
-
-export async function update(id, user_id, data, transaction) {
-  const options = transaction ? { transaction } : {};
-  return Review.findOne({ where: { id, user_id }, ...options }).then(
-    (review) => {
-      if (!review) return null;
-      return review.update(data, options);
-    },
-  );
-}
-
-export async function remove(id, user_id, transaction) {
-  const options = transaction ? { transaction } : {};
-  return Review.findOne({ where: { id, user_id }, ...options }).then(
-    (review) => {
-      if (!review) return null;
-      return review.destroy();
-    },
-  );
 }
 
 export async function findRestaurantIdsByUserId(user_id) {

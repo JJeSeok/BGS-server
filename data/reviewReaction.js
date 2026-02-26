@@ -21,12 +21,8 @@ export const ReviewReaction = sequelize.define(
   },
   {
     indexes: [{ fields: ['review_id', 'type'] }],
-  }
+  },
 );
-
-export async function findByReviewAndUser(review_id, user_id) {
-  return ReviewReaction.findOne({ where: { review_id, user_id } });
-}
 
 export async function toggleReaction(review_id, user_id, type) {
   return sequelize.transaction(async (t) => {
@@ -38,7 +34,7 @@ export async function toggleReaction(review_id, user_id, type) {
     if (!existing) {
       await ReviewReaction.create(
         { review_id, user_id, type },
-        { transaction: t }
+        { transaction: t },
       );
       return { userReaction: type };
     }

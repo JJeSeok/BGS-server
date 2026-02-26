@@ -509,11 +509,6 @@ export async function update(id, updateData) {
     .then((restaurant) => restaurant.update(updateData));
 }
 
-export async function remove(id) {
-  return Restaurant.findByPk(id) //
-    .then((restaurant) => restaurant.destroy());
-}
-
 export async function increaseInViewCount(id) {
   return Restaurant.increment('view_count', { by: 1, where: { id } });
 }

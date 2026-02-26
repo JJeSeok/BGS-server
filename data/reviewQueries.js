@@ -64,33 +64,6 @@ export async function getAllByRestaurantIdKeyset(
   return { rows: sliced, hasMore, nextCursor };
 }
 
-export async function getAllByRestaurantId(restaurant_id, blockedUserIds) {
-  const where = { restaurant_id };
-  if (blockedUserIds.length > 0) {
-    where.user_id = { [Op.notIn]: blockedUserIds };
-  }
-
-  return Review.findAll({
-    where,
-    include: [
-      {
-        model: ReviewImage,
-        as: 'images',
-        attributes: ['id', 'url', 'width', 'height', 'sort_order'],
-        required: false,
-        order: [['sort_order', 'ASC']],
-        separate: true,
-      },
-      {
-        model: User,
-        attributes: ['id', 'name', 'profile_image_url'],
-        required: true,
-      },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
-}
-
 export async function getAllByUserId(user_id) {
   const reviews = await Review.findAll({
     where: { user_id },
