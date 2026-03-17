@@ -8,6 +8,7 @@ import { RestaurantLike } from './restaurantLike.js';
 import { UserBlock } from './userBlock.js';
 import { RestaurantRequest } from './restaurantRequest.js';
 import { RestaurantCohortStat } from './restaurantCohortStat.js';
+import { Menu } from './menu.js';
 
 RestaurantPhoto.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
@@ -100,3 +101,11 @@ RestaurantCohortStat.belongsTo(Restaurant, {
   onUpdate: 'CASCADE',
 });
 Restaurant.hasMany(RestaurantCohortStat, { foreignKey: 'restaurant_id' });
+
+Menu.belongsTo(Restaurant, {
+  foreignKey: 'restaurant_id',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+
+Restaurant.hasMany(Menu, { foreignKey: 'restaurant_id' });

@@ -1,6 +1,7 @@
 import { DataTypes, Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 import { User } from './user.js';
+import { Menu } from './menu.js';
 import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 
 export const Restaurant = sequelize.define(
@@ -495,7 +496,20 @@ export async function getAllRestaurants({
 }
 
 export async function getRestaurantById(id) {
-  return Restaurant.findByPk(id);
+  return Restaurant.findByPk(id, {
+    include: [
+      {
+        model: Menu,
+        as: 'menus',
+        attributes: ['id', 'name', 'price', 'sort_order'],
+        separate: true,
+        order: [
+          ['sort_order', 'ASC'],
+          ['id', 'ASC'],
+        ],
+      },
+    ],
+  });
 }
 
 export async function create(restaurant) {
