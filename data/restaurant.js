@@ -47,14 +47,19 @@ export const Restaurant = sequelize.define(
     jibun_address: {
       type: DataTypes.STRING(40),
     },
-    // openingTime: {
-    //   type: DataTypes.TIME,
-    //   allowNull: false,
-    // },
-    // closingTime: {
-    //   type: DataTypes.TIME,
-    //   allowNull: false,
-    // },
+    opening_time: {
+      type: DataTypes.TIME,
+      allowNull: true,
+    },
+    closing_time: {
+      type: DataTypes.TIME,
+      allowNull: true,
+    },
+    is_24_hours: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     phone: {
       type: DataTypes.STRING(20),
       allowNull: true,
