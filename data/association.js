@@ -9,6 +9,7 @@ import { UserBlock } from './userBlock.js';
 import { RestaurantRequest } from './restaurantRequest.js';
 import { RestaurantCohortStat } from './restaurantCohortStat.js';
 import { Menu } from './menu.js';
+import { RestaurantHour } from './restaurantHour.js';
 
 RestaurantPhoto.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
@@ -104,8 +105,21 @@ Restaurant.hasMany(RestaurantCohortStat, { foreignKey: 'restaurant_id' });
 
 Menu.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
+  as: 'restaurant',
   onDelete: 'CASCADE',
   onUpdate: 'CASCADE',
 });
 
-Restaurant.hasMany(Menu, { foreignKey: 'restaurant_id' });
+Restaurant.hasMany(Menu, { foreignKey: 'restaurant_id', as: 'menus' });
+
+RestaurantHour.belongsTo(Restaurant, {
+  foreignKey: 'restaurant_id',
+  as: 'restaurant',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+});
+
+Restaurant.hasMany(RestaurantHour, {
+  foreignKey: 'restaurant_id',
+  as: 'restaurantHours',
+});

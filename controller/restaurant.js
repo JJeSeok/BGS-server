@@ -3,7 +3,7 @@ import * as restaurantPhotoRepository from '../data/restaurantPhoto.js';
 import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import * as restaurantQueries from '../data/restaurantQueries.js';
 import { safeUnlinkManyByUrls } from '../utils/file.js';
-import { formatHours, getRestaurantOpenStatus } from '../utils/restaurant.js';
+import { getRestaurantTodayInfo } from '../utils/restaurant.js';
 
 export async function getRestaurants(req, res) {
   const { sort, sido, q, lat, lng } = req.query;
@@ -48,17 +48,7 @@ export async function getRestaurant(req, res) {
   if (restaurant) {
     const data = restaurant.toJSON();
 
-    data.isOpen = getRestaurantOpenStatus({
-      openingTime: data.opening_time,
-      closingTime: data.closing_time,
-      is24Hours: data.is_24_hours,
-    });
-
-    data.businessHours = formatHours({
-      openingTime: data.opening_time,
-      closingTime: data.closing_time,
-      is24Hours: data.is_24_hours,
-    });
+    data.todayBusiness = getRestaurantTodayInfo(data.restaurantHours);
 
     const photos =
       await restaurantPhotoRepository.getRestaurantPhotos(restaurantId);

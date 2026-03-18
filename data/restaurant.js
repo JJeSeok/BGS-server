@@ -3,6 +3,7 @@ import { sequelize } from '../db/database.js';
 import { User } from './user.js';
 import { Menu } from './menu.js';
 import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
+import { RestaurantHour } from './restaurantHour.js';
 
 export const Restaurant = sequelize.define(
   'restaurant',
@@ -46,19 +47,6 @@ export const Restaurant = sequelize.define(
     },
     jibun_address: {
       type: DataTypes.STRING(40),
-    },
-    opening_time: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-    closing_time: {
-      type: DataTypes.TIME,
-      allowNull: true,
-    },
-    is_24_hours: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
     phone: {
       type: DataTypes.STRING(20),
@@ -512,6 +500,22 @@ export async function getRestaurantById(id) {
           ['sort_order', 'ASC'],
           ['id', 'ASC'],
         ],
+      },
+      {
+        model: RestaurantHour,
+        as: 'restaurantHours',
+        attributes: [
+          'day_of_week',
+          'open_time',
+          'close_time',
+          'break_start_time',
+          'break_end_time',
+          'last_order_time',
+          'is_closed',
+          'is_24_hours',
+        ],
+        separate: true,
+        order: [['day_of_week', 'ASC']],
       },
     ],
   });
