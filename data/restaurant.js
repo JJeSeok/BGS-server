@@ -52,6 +52,22 @@ export const Restaurant = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    parking_info: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    takeout: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    delivery: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    reservation: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
     rating_avg: {
       type: DataTypes.DECIMAL(2, 1),
       allowNull: false,
