@@ -127,6 +127,10 @@ export const Restaurant = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    info_updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     charset: 'utf8mb4',

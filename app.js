@@ -23,7 +23,7 @@ app.use(morgan('tiny'));
 
 app.use(
   '/uploads',
-  helmet.crossOriginResourcePolicy({ policy: 'cross-origin' })
+  helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }),
 );
 
 app.use(
@@ -31,7 +31,7 @@ app.use(
   express.static(path.join(process.cwd(), 'uploads'), {
     maxAge: '7d',
     immutable: true,
-  })
+  }),
 );
 
 app.use('/restaurants', restaurantsRouter);

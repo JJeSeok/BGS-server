@@ -293,6 +293,7 @@ export async function updateRestaurantForOwner(req, res) {
         jibun_address: req.body.jibun_address?.trim() || null,
         lat: req.body.lat ? Number(req.body.lat) : null,
         lng: req.body.lng ? Number(req.body.lng) : null,
+        info_updated_at: new Date(),
       };
 
       if (newMainImageUrl) {
