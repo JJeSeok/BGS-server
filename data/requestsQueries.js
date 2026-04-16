@@ -3,6 +3,7 @@ import { RestaurantRequest } from './restaurantRequest.js';
 import { User } from './user.js';
 import { Restaurant } from './restaurant.js';
 import { sequelize } from '../db/database.js';
+import { copyRequestImageToRestaurant } from '../utils/file.js';
 
 export async function findAdminRequests({
   status = 'pending',
@@ -49,7 +50,10 @@ export async function findAdminRequests({
 }
 
 export async function approveRequest(requestId, adminUserId) {
-  return sequelize.transaction(async (t) => {
+  let copiedImage = null;
+  let oldImageUrl = null;
+
+  const result = await sequelize.transaction(async (t) => {
     const reqRow = await RestaurantRequest.findOne({
       where: { id: requestId },
       transaction: t,
@@ -68,12 +72,23 @@ export async function approveRequest(requestId, adminUserId) {
       throw err;
     }
 
+    oldImageUrl = reqRow.main_image_url || null;
+
+    let restaurantMainImageUrl = '/images/흠.png';
+
+    if (oldImageUrl) {
+      copiedImage = await copyRequestImageToRestaurant(oldImageUrl);
+      if (copiedImage?.newImageUrl) {
+        restaurantMainImageUrl = copiedImage.newImageUrl;
+      }
+    }
+
     const restaurant = await Restaurant.create(
       {
         name: reqRow.name,
         category: reqRow.category,
         branch_info: reqRow.branch_info ?? null,
-        main_image_url: reqRow.main_image_url || '/images/흠.png',
+        main_image_url: restaurantMainImageUrl,
         sido: reqRow.sido,
         sigugun: reqRow.sigugun,
         dongmyun: reqRow.dongmyun,
@@ -83,20 +98,27 @@ export async function approveRequest(requestId, adminUserId) {
         description: reqRow.description ?? null,
         lat: reqRow.lat ?? null,
         lng: reqRow.lng ?? null,
+        owner_id: reqRow.requested_by ?? null,
         created_by: reqRow.requested_by ?? null,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     reqRow.status = 'approved';
     reqRow.reviewed_by = adminUserId;
     reqRow.reviewed_at = new Date();
     reqRow.approved_restaurant_id = restaurant.id;
+    reqRow.main_image_url = null;
 
     await reqRow.save({ transaction: t });
 
-    return { requestId: reqRow.id, restaurantId: restaurant.id };
+    return {
+      restaurantId: restaurant.id,
+      oldImageUrl,
+    };
   });
+
+  return result;
 }
 
 export async function rejectRequest(requestId, adminUserId, reason) {

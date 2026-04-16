@@ -32,6 +32,13 @@ export async function approveRestaurantRequest(req, res) {
 
   try {
     const result = await requestQueries.approveRequest(requestId, req.userId);
+
+    if (result.oldImageUrl) {
+      const filePath = getRestaurantRequestImageFilePath(result.oldImageUrl);
+
+      await safeUnlink(filePath);
+    }
+
     return res.status(200).json({ message: '승인되었습니다.', data: result });
   } catch (err) {
     if (err.code === 'NOT_FOUND') {
@@ -59,7 +66,7 @@ export async function rejectRestaurantRequest(req, res) {
     const result = await requestQueries.rejectRequest(
       requestId,
       req.userId,
-      reason
+      reason,
     );
 
     const filePath = getRestaurantRequestImageFilePath(result.imageUrl);

@@ -119,8 +119,12 @@ export const Restaurant = sequelize.define(
       type: DataTypes.DECIMAL(10, 7),
       allowNull: true,
     },
+    owner_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     created_by: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },
@@ -537,6 +541,10 @@ export async function getRestaurantById(id) {
   });
 }
 
+export async function getRestaurantByIdForUpdate(id, transaction = undefined) {
+  return Restaurant.findByPk(id, { transaction });
+}
+
 export async function create(restaurant) {
   return Restaurant.create(restaurant).then((data) =>
     getRestaurantById(data.dataValues.id),
@@ -571,5 +579,25 @@ export async function decreaseInLikeCount(id, { transaction } = {}) {
 export async function findByIds(ids) {
   return Restaurant.findAll({
     where: { id: { [Op.in]: ids } },
+  });
+}
+
+export async function getMyRestaurants(userId) {
+  return Restaurant.findAll({
+    where: { owner_id: userId },
+    attributes: [
+      'id',
+      'name',
+      'branch_info',
+      'category',
+      'main_image_url',
+      'road_address',
+      'jibun_address',
+      'parking_info',
+      'takeout',
+      'delivery',
+      'reservation',
+    ],
+    order: [['id', 'DESC']],
   });
 }

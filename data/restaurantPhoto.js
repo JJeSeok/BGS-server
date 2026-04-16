@@ -33,23 +33,87 @@ export const RestaurantPhoto = sequelize.define(
         fields: ['restaurant_id', 'sort_order'],
       },
     ],
-  }
+  },
 );
 
-export async function getRestaurantPhotos(id) {
+export async function getRestaurantPhotos(
+  restaurantId,
+  transaction = undefined,
+) {
   return RestaurantPhoto.findAll({
-    where: { restaurant_id: id },
-    attributes: ['id', 'url', 'sort_order'],
-    order: [['sort_order', 'ASC']],
+    where: { restaurant_id: restaurantId },
+    order: [
+      ['sort_order', 'ASC'],
+      ['id', 'ASC'],
+    ],
+    transaction,
   });
 }
 
-export async function getMaxSortOrder(id) {
-  return (
-    RestaurantPhoto.max('sort_order', { where: { restaurant_id: id } }) || 0
-  );
+export async function getRestaurantPhotoByIds(
+  photoIds,
+  restaurantId,
+  transaction = undefined,
+) {
+  return RestaurantPhoto.findAll({
+    where: {
+      id: photoIds,
+      restaurant_id: restaurantId,
+    },
+    transaction,
+  });
 }
 
-export async function create(rows) {
-  return RestaurantPhoto.bulkCreate(rows);
+export async function deleteRestaurantPhotosByIds(
+  photoIds,
+  restaurantId,
+  transaction = undefined,
+) {
+  return RestaurantPhoto.destroy({
+    where: {
+      id: photoIds,
+      restaurant_id: restaurantId,
+    },
+    transaction,
+  });
+}
+
+export async function getMaxSortOrder(restaurantId, transaction = undefined) {
+  const row = await RestaurantPhoto.findOne({
+    where: { restaurant_id: restaurantId },
+    order: [['sort_order', 'DESC']],
+    transaction,
+  });
+
+  return row?.sort_order ?? 0;
+}
+
+export async function create(rows, transaction = undefined) {
+  return RestaurantPhoto.bulkCreate(rows, { transaction });
+}
+
+export async function countRestaurantPhotos(
+  restaurantId,
+  transaction = undefined,
+) {
+  return RestaurantPhoto.count({
+    where: { restaurant_id: restaurantId },
+    transaction,
+  });
+}
+
+export async function countDeletablePhotos(
+  restaurantId,
+  deleteIds,
+  transaction = undefined,
+) {
+  if (!Array.isArray(deleteIds) || deleteIds.length === 0) return 0;
+
+  return RestaurantPhoto.count({
+    where: {
+      id: deleteIds,
+      restaurant_id: restaurantId,
+    },
+    transaction,
+  });
 }

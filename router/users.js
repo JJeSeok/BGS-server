@@ -228,14 +228,14 @@ router.post('/logout', userController.logout);
 router.post(
   '/forgotId-phone',
   validateForgotIdPhone,
-  userController.forgotId_phone
+  userController.forgotId_phone,
 );
 
 // POST /users/forgotId-email
 router.post(
   '/forgotId-email',
   validateForgotIdEmail,
-  userController.forgotId_email
+  userController.forgotId_email,
 );
 
 // POST /users/forgotPassword/request
@@ -243,7 +243,7 @@ router.post(
   '/forgotPassword/request',
   pwdLimiter,
   validateForgotPwRequest,
-  userController.forgotPasswordRequest
+  userController.forgotPasswordRequest,
 );
 
 // POST /users/forgotPassword/verify
@@ -251,14 +251,14 @@ router.post(
   '/forgotPassword/verify',
   pwdLimiter,
   validateForgotPwVerify,
-  userController.forgotPasswordVerify
+  userController.forgotPasswordVerify,
 );
 
 // POST /users/forgotPassword/reset
 router.post(
   '/forgotPassword/reset',
   validateForgotPwReset,
-  userController.forgotPasswordReset
+  userController.forgotPasswordReset,
 );
 
 // GET /users/me
@@ -271,14 +271,14 @@ router.get('/me/profile', isAuth, userController.getMyProfile);
 router.get(
   '/me/visited-restaurants',
   isAuth,
-  userController.getVisitedRestaurants
+  userController.getVisitedRestaurants,
 );
 
 // GET /users/me/liked-restaurants
 router.get(
   '/me/liked-restaurants',
   isAuth,
-  userController.getMyLikedRestaurants
+  userController.getMyLikedRestaurants,
 );
 
 // POST /users/me/check-password
@@ -289,7 +289,7 @@ router.patch(
   '/me',
   isAuth,
   validateUpdateProfile,
-  userController.updateMyProfile
+  userController.updateMyProfile,
 );
 
 // PUT /users/me/profile-image
@@ -297,7 +297,7 @@ router.put(
   '/me/profile-image',
   isAuth,
   uploadProfileImage.single('image'),
-  userController.updateMyProfileImage
+  userController.updateMyProfileImage,
 );
 
 // DELETE /users/me/profile-image
@@ -311,5 +311,8 @@ router.delete('/me/blocks/:blockedUserId', isAuth, userController.unblockUser);
 
 // GET /users/me/blocks
 router.get('/me/blocks', isAuth, userController.getMyBlocks);
+
+// GET /users/me/restaurants
+router.get('/me/restaurants', isAuth, userController.getMyRestaurants);
 
 export default router;

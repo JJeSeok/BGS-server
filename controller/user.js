@@ -251,7 +251,7 @@ export async function updateMyProfile(req, res) {
   if (newPassword) {
     updateData.password = await bcrypt.hash(
       newPassword,
-      config.bcrypt.saltRounds
+      config.bcrypt.saltRounds,
     );
   }
 
@@ -273,7 +273,7 @@ export async function getVisitedRestaurants(req, res) {
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   const restaurantIds = await reviewRepository.findRestaurantIdsByUserId(
-    req.userId
+    req.userId,
   );
 
   const uniqueIds = [...new Set(restaurantIds)];
@@ -301,7 +301,7 @@ export async function getMyLikedRestaurants(req, res) {
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   const likedIds = await restaurantLikeRepository.getRestaurantIdsByUserId(
-    req.userId
+    req.userId,
   );
   if (!likedIds || likedIds.length === 0) return res.status(200).json([]);
 
@@ -429,4 +429,22 @@ export async function getMyBlocks(req, res) {
       profileImageUrl: u.profile_image_url,
     }));
   return res.status(200).json(data);
+}
+
+export async function getMyRestaurants(req, res) {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ message: '로그인이 필요합니다.' });
+  }
+
+  try {
+    const restaurants = await restaurantRepository.getMyRestaurants(userId);
+    return res.status(200).json(restaurants);
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: '내 식당 목록 조회 중 오류가 발생했습니다.' });
+  }
 }

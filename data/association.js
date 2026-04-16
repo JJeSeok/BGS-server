@@ -123,3 +123,29 @@ Restaurant.hasMany(RestaurantHour, {
   foreignKey: 'restaurant_id',
   as: 'restaurantHours',
 });
+
+Restaurant.belongsTo(User, {
+  foreignKey: 'owner_id',
+  as: 'owner',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});
+User.hasMany(Restaurant, {
+  foreignKey: 'owner_id',
+  as: 'ownedRestaurants',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});
+
+Restaurant.belongsTo(User, {
+  foreignKey: 'created_by',
+  as: 'creator',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});
+User.hasMany(Restaurant, {
+  foreignKey: 'created_by',
+  as: 'createdRestaurants',
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE',
+});

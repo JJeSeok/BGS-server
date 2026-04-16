@@ -60,3 +60,49 @@ export const RestaurantHour = sequelize.define(
     ],
   },
 );
+
+function normalizeHourPayload(hour) {
+  return {
+    is_closed: Boolean(hour.isClosed),
+    open_time: hour.openTime || null,
+    close_time: hour.closeTime || null,
+    break_start_time: hour.breakStart || null,
+    break_end_time: hour.breakEnd || null,
+    last_order_time: hour.lastOrder || null,
+    is_24_hours: Boolean(hour.is24Hours),
+  };
+}
+
+export async function updateRestaurantHours(
+  restaurantId,
+  businessHours = [],
+  transaction = undefined,
+) {
+  if (!Array.isArray(businessHours)) return;
+
+  for (const hour of businessHours) {
+    const existing = await RestaurantHour.findOne({
+      where: {
+        restaurant_id: restaurantId,
+        day_of_week: hour.dayOfWeek,
+      },
+      transaction,
+    });
+
+    const values = normalizeHourPayload(hour);
+
+    if (existing) {
+      await existing.update(values, { transaction });
+      continue;
+    }
+
+    await RestaurantHour.create(
+      {
+        restaurant_id: restaurantId,
+        day_of_week: hour.dayOfWeek,
+        ...values,
+      },
+      { transaction },
+    );
+  }
+}
