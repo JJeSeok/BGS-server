@@ -281,6 +281,9 @@ router.get(
   userController.getMyLikedRestaurants,
 );
 
+// GET /users/me/reviews/meta
+router.get('/me/reviews/meta', isAuth, userController.getMyReviewsMeta);
+
 // POST /users/me/check-password
 router.post('/me/check-password', isAuth, userController.checkMyPassword);
 

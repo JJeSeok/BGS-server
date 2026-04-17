@@ -10,26 +10,16 @@ import * as cohortRepository from '../data/restaurantCohortStat.js';
 const LIMIT = 5;
 const ALLOWED = new Set(['good', 'ok', 'bad']);
 
-export async function getAllByRestaurantIdKeyset(
-  restaurant_id,
-  blockedUserIds,
-  cursor,
-  category,
-) {
-  const where = { restaurant_id };
-  if (blockedUserIds.length > 0) {
-    where.user_id = { [Op.notIn]: blockedUserIds };
-  }
-  if (cursor) {
-    where[Op.or] = [
-      { createdAt: { [Op.lt]: cursor.createdAt } },
-      { createdAt: cursor.createdAt, id: { [Op.lt]: cursor.id } },
-    ];
-  }
-  if (category && ALLOWED.has(category)) {
-    where.ratingCategory = category;
-  }
+function applyKeysetCursorWhere(where, cursor) {
+  if (!cursor) return;
 
+  where[Op.or] = [
+    { createdAt: { [Op.lt]: cursor.createdAt } },
+    { createdAt: cursor.createdAt, id: { [Op.lt]: cursor.id } },
+  ];
+}
+
+async function runReviewKeyset(where) {
   const rows = await Review.findAll({
     where,
     include: [
@@ -64,28 +54,29 @@ export async function getAllByRestaurantIdKeyset(
   return { rows: sliced, hasMore, nextCursor };
 }
 
-export async function getAllByUserId(user_id) {
-  const reviews = await Review.findAll({
-    where: { user_id },
-    include: [
-      {
-        model: ReviewImage,
-        as: 'images',
-        attributes: ['id', 'url', 'width', 'height', 'sort_order'],
-        required: false,
-        order: [['sort_order', 'ASC']],
-        separate: true,
-      },
-      {
-        model: User,
-        attributes: ['id', 'name', 'profile_image_url'],
-        required: true,
-      },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
+export async function getAllByRestaurantIdKeyset(
+  restaurant_id,
+  blockedUserIds,
+  cursor,
+  category,
+) {
+  const where = { restaurant_id };
+  if (blockedUserIds.length > 0) {
+    where.user_id = { [Op.notIn]: blockedUserIds };
+  }
+  applyKeysetCursorWhere(where, cursor);
+  if (category && ALLOWED.has(category)) {
+    where.ratingCategory = category;
+  }
 
-  return reviews;
+  return runReviewKeyset(where);
+}
+
+export async function getAllByUserIdKeyset(user_id, cursor) {
+  const where = { user_id };
+  applyKeysetCursorWhere(where, cursor);
+
+  return runReviewKeyset(where);
 }
 
 export async function getOneWithImages(id) {

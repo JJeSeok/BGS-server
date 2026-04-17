@@ -54,10 +54,18 @@ export async function getReviews(req, res) {
       });
     }
   } else if (userId) {
-    reviews = await reviewQueries.getAllByUserId(userId);
+    const cursorObj = parseCursor(req.query.cursor);
+    const result = await reviewQueries.getAllByUserIdKeyset(userId, cursorObj);
+
+    reviews = result.rows;
+    hasMore = result.hasMore;
+    nextCursor = result.nextCursor;
 
     if (!reviews || reviews.length === 0) {
-      return res.status(200).json([]);
+      return res.status(200).json({
+        page: { limit: 5, hasMore: false, nextCursor: null },
+        data: [],
+      });
     }
   }
 
@@ -81,14 +89,10 @@ export async function getReviews(req, res) {
     };
   });
 
-  if (restaurantId) {
-    return res.status(200).json({
-      page: { limit: 5, hasMore, nextCursor },
-      data,
-    });
-  }
-
-  return res.status(200).json(data);
+  return res.status(200).json({
+    page: { limit: 5, hasMore, nextCursor },
+    data,
+  });
 }
 
 export async function getReview(req, res) {

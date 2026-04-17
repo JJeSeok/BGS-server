@@ -7,6 +7,7 @@ import * as reviewRepository from '../data/review.js';
 import * as restaurantRepository from '../data/restaurant.js';
 import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import * as userBlockRepository from '../data/userBlock.js';
+import * as userMetaRepository from '../data/userMeta.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
 import { sendMail } from '../utils/mailer.js';
 import { config } from '../config.js';
@@ -321,6 +322,21 @@ export async function getMyLikedRestaurants(req, res) {
   }));
 
   res.status(200).json(data);
+}
+
+export async function getMyReviewsMeta(req, res) {
+  const user = await userRepository.findById(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const reviewMeta = await userMetaRepository.getReviewMetaByUserId(req.userId);
+
+  return res.status(200).json({
+    data: {
+      totalCount: reviewMeta.totalCount,
+      totalLikeCount: reviewMeta.totalLikeCount,
+      totalDislikeCount: reviewMeta.totalDislikeCount,
+    },
+  });
 }
 
 export async function updateMyProfileImage(req, res) {
