@@ -25,3 +25,22 @@ export async function getReviewMetaByUserId(userId) {
     totalDislikeCount: Number(row.totalDislikeCount ?? 0),
   };
 }
+
+export async function getVisitedRestaurantMetaByUserId(userId) {
+  const sql = `
+    SELECT COUNT(DISTINCT restaurant_id) AS totalCount
+    FROM reviews
+    WHERE user_id = :userId
+  `;
+
+  const rows = await sequelize.query(sql, {
+    type: QueryTypes.SELECT,
+    replacements: { userId },
+  });
+
+  const row = rows?.[0] ?? {};
+
+  return {
+    totalCount: Number(row.totalCount ?? 0),
+  };
+}

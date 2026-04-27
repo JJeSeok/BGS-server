@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import * as userRepository from '../data/user.js';
 import * as pwResetRepository from '../data/passwordReset.js';
-import * as reviewRepository from '../data/review.js';
 import * as restaurantRepository from '../data/restaurant.js';
 import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import * as userBlockRepository from '../data/userBlock.js';
@@ -273,15 +272,12 @@ export async function getVisitedRestaurants(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const restaurantIds = await reviewRepository.findRestaurantIdsByUserId(
+  const result = await restaurantRepository.getVisitedRestaurants(
     req.userId,
+    req.query.cursor,
   );
 
-  const uniqueIds = [...new Set(restaurantIds)];
-  if (uniqueIds.length === 0) return res.status(200).json([]);
-
-  const restaurants = await restaurantRepository.findByIds(uniqueIds);
-  const data = restaurants.map((r) => ({
+  const data = result.rows.map((r) => ({
     id: r.id,
     name: r.name,
     mainImageUrl: r.main_image_url,
@@ -294,7 +290,14 @@ export async function getVisitedRestaurants(req, res) {
     },
   }));
 
-  res.status(200).json(data);
+  return res.status(200).json({
+    page: {
+      limit: 20,
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
+    },
+    data,
+  });
 }
 
 export async function getMyLikedRestaurants(req, res) {
@@ -324,17 +327,25 @@ export async function getMyLikedRestaurants(req, res) {
   res.status(200).json(data);
 }
 
-export async function getMyReviewsMeta(req, res) {
+export async function getMyMeta(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const reviewMeta = await userMetaRepository.getReviewMetaByUserId(req.userId);
+  const [reviewMeta, visitedRestaurantMeta] = await Promise.all([
+    userMetaRepository.getReviewMetaByUserId(req.userId),
+    userMetaRepository.getVisitedRestaurantMetaByUserId(req.userId),
+  ]);
 
   return res.status(200).json({
     data: {
-      totalCount: reviewMeta.totalCount,
-      totalLikeCount: reviewMeta.totalLikeCount,
-      totalDislikeCount: reviewMeta.totalDislikeCount,
+      reviews: {
+        totalCount: reviewMeta.totalCount,
+        totalLikeCount: reviewMeta.totalLikeCount,
+        totalDislikeCount: reviewMeta.totalDislikeCount,
+      },
+      visitedRestaurants: {
+        totalCount: visitedRestaurantMeta.totalCount,
+      },
     },
   });
 }
