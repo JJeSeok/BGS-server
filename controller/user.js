@@ -311,11 +311,12 @@ export async function getMyMeta(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const [reviewMeta, visitedRestaurantMeta, likedRestaurantMeta] =
+  const [reviewMeta, visitedRestaurantMeta, likedRestaurantMeta, blockMeta] =
     await Promise.all([
       userMetaRepository.getReviewMetaByUserId(req.userId),
       userMetaRepository.getVisitedRestaurantMetaByUserId(req.userId),
       userMetaRepository.getLikedRestaurantMetaByUserId(req.userId),
+      userMetaRepository.getBlockMetaByUserId(req.userId),
     ]);
 
   return res.status(200).json({
@@ -330,6 +331,9 @@ export async function getMyMeta(req, res) {
       },
       likedRestaurants: {
         totalCount: likedRestaurantMeta.totalCount,
+      },
+      blocks: {
+        totalCount: blockMeta.totalCount,
       },
     },
   });
@@ -430,17 +434,22 @@ export async function unblockUser(req, res) {
 
 export async function getMyBlocks(req, res) {
   const blockerId = req.userId;
-  const rows = await userBlockRepository.getBlockedUsers(blockerId);
+  const result = await userBlockRepository.getBlockedUsers(
+    blockerId,
+    req.query.cursor,
+  );
 
-  const data = rows
-    .map((r) => r.Blocked)
-    .filter(Boolean)
-    .map((u) => ({
-      id: u.id,
-      name: u.name,
-      profileImageUrl: u.profile_image_url,
-    }));
-  return res.status(200).json(data);
+  const data = toBlockedUserDTO(
+    result.rows.map((r) => r.Blocked).filter(Boolean),
+  );
+
+  return res.status(200).json({
+    page: {
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
+    },
+    data,
+  });
 }
 
 export async function getMyRestaurants(req, res) {
@@ -473,5 +482,13 @@ function toRestaurantListDTO(restaurants) {
       sigugun: r.sigugun,
       dongmyun: r.dongmyun,
     },
+  }));
+}
+
+function toBlockedUserDTO(users) {
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    profileImageUrl: u.profile_image_url,
   }));
 }
