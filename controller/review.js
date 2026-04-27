@@ -49,7 +49,7 @@ export async function getReviews(req, res) {
 
     if (!reviews || reviews.length === 0) {
       return res.status(200).json({
-        page: { limit: 5, hasMore: false, nextCursor: null },
+        page: { hasMore: false, nextCursor: null },
         data: [],
       });
     }
@@ -63,7 +63,7 @@ export async function getReviews(req, res) {
 
     if (!reviews || reviews.length === 0) {
       return res.status(200).json({
-        page: { limit: 5, hasMore: false, nextCursor: null },
+        page: { hasMore: false, nextCursor: null },
         data: [],
       });
     }
@@ -90,7 +90,7 @@ export async function getReviews(req, res) {
   });
 
   return res.status(200).json({
-    page: { limit: 5, hasMore, nextCursor },
+    page: { hasMore, nextCursor },
     data,
   });
 }

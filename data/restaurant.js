@@ -580,31 +580,23 @@ export async function decreaseInLikeCount(id, { transaction } = {}) {
   });
 }
 
-export async function findByIds(ids) {
-  return Restaurant.findAll({
-    where: { id: { [Op.in]: ids } },
-  });
-}
-
 export async function getVisitedRestaurants(userId, cursor) {
   const replacements = { userId, limit: LIMIT + 1 };
   const cursorObj = decodeCursor(cursor);
 
   let cursorSql = '';
   if (cursorObj?.lastVisitedAt && cursorObj?.id) {
-    const lastVisitedAt = new Date(cursorObj.lastVisitedAt);
-    const id = Number(cursorObj.id);
+    const lastVisitedAt = cursorObj.lastVisitedAt;
+    const id = cursorObj.id;
 
-    if (!Number.isNaN(lastVisitedAt.getTime()) && Number.isFinite(id)) {
-      replacements.lastVisitedAt = lastVisitedAt;
-      replacements.id = id;
-      cursorSql = `
+    replacements.lastVisitedAt = lastVisitedAt;
+    replacements.id = id;
+    cursorSql = `
         WHERE (
           v.lastVisitedAt < :lastVisitedAt
           OR (v.lastVisitedAt = :lastVisitedAt AND r.id < :id)
         )
       `;
-    }
   }
 
   const rows = await sequelize.query(
@@ -631,6 +623,50 @@ export async function getVisitedRestaurants(userId, cursor) {
   const nextCursor =
     hasMore && last
       ? encodeCursor({ lastVisitedAt: last.lastVisitedAt, id: last.id })
+      : null;
+
+  return { rows: sliced, hasMore, nextCursor };
+}
+
+export async function getLikedRestaurants(userId, cursor) {
+  const replacements = { userId, limit: LIMIT + 1 };
+  const cursorObj = decodeCursor(cursor);
+
+  let cursorSql = '';
+  if (cursorObj?.likedAt && cursorObj?.id) {
+    const likedAt = cursorObj.likedAt;
+    const id = cursorObj.id;
+
+    replacements.likedAt = likedAt;
+    replacements.id = id;
+    cursorSql = `
+        AND (
+          rl.createdAt < :likedAt
+          OR (rl.createdAt = :likedAt AND r.id < :id)
+        )
+      `;
+  }
+
+  const rows = await sequelize.query(
+    `SELECT
+      r.id, r.name, r.main_image_url, r.road_address, r.jibun_address,
+      r.sido, r.sigugun, r.dongmyun, rl.createdAt AS likedAt
+    FROM restaurant_likes rl
+    INNER JOIN restaurants r ON r.id = rl.restaurant_id
+    WHERE rl.user_id = :userId
+    ${cursorSql}
+    ORDER BY rl.createdAt DESC, r.id DESC
+    LIMIT :limit`,
+    { type: QueryTypes.SELECT, replacements },
+  );
+
+  const hasMore = rows.length > LIMIT;
+  const sliced = hasMore ? rows.slice(0, LIMIT) : rows;
+
+  const last = sliced[sliced.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? encodeCursor({ likedAt: last.likedAt, id: last.id })
       : null;
 
   return { rows: sliced, hasMore, nextCursor };

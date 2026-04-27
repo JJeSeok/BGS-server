@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import * as userRepository from '../data/user.js';
 import * as pwResetRepository from '../data/passwordReset.js';
 import * as restaurantRepository from '../data/restaurant.js';
-import * as restaurantLikeRepository from '../data/restaurantLike.js';
 import * as userBlockRepository from '../data/userBlock.js';
 import * as userMetaRepository from '../data/userMeta.js';
 import { genCode, genSalt, hashCode } from '../utils/otp.js';
@@ -277,22 +276,10 @@ export async function getVisitedRestaurants(req, res) {
     req.query.cursor,
   );
 
-  const data = result.rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    mainImageUrl: r.main_image_url,
-    address: {
-      road: r.road_address || null,
-      jibun: r.jibun_address || null,
-      sido: r.sido,
-      sigugun: r.sigugun,
-      dongmyun: r.dongmyun,
-    },
-  }));
+  const data = toRestaurantListDTO(result.rows);
 
   return res.status(200).json({
     page: {
-      limit: 20,
       hasMore: result.hasMore,
       nextCursor: result.nextCursor,
     },
@@ -304,37 +291,32 @@ export async function getMyLikedRestaurants(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const likedIds = await restaurantLikeRepository.getRestaurantIdsByUserId(
+  const result = await restaurantRepository.getLikedRestaurants(
     req.userId,
+    req.query.cursor,
   );
-  if (!likedIds || likedIds.length === 0) return res.status(200).json([]);
 
-  const restaurants = await restaurantRepository.findByIds(likedIds);
+  const data = toRestaurantListDTO(result.rows);
 
-  const data = restaurants.map((r) => ({
-    id: r.id,
-    name: r.name,
-    mainImageUrl: r.main_image_url,
-    address: {
-      road: r.road_address || null,
-      jibun: r.jibun_address || null,
-      sido: r.sido,
-      sigugun: r.sigugun,
-      dongmyun: r.dongmyun,
+  return res.status(200).json({
+    page: {
+      hasMore: result.hasMore,
+      nextCursor: result.nextCursor,
     },
-  }));
-
-  res.status(200).json(data);
+    data,
+  });
 }
 
 export async function getMyMeta(req, res) {
   const user = await userRepository.findById(req.userId);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const [reviewMeta, visitedRestaurantMeta] = await Promise.all([
-    userMetaRepository.getReviewMetaByUserId(req.userId),
-    userMetaRepository.getVisitedRestaurantMetaByUserId(req.userId),
-  ]);
+  const [reviewMeta, visitedRestaurantMeta, likedRestaurantMeta] =
+    await Promise.all([
+      userMetaRepository.getReviewMetaByUserId(req.userId),
+      userMetaRepository.getVisitedRestaurantMetaByUserId(req.userId),
+      userMetaRepository.getLikedRestaurantMetaByUserId(req.userId),
+    ]);
 
   return res.status(200).json({
     data: {
@@ -345,6 +327,9 @@ export async function getMyMeta(req, res) {
       },
       visitedRestaurants: {
         totalCount: visitedRestaurantMeta.totalCount,
+      },
+      likedRestaurants: {
+        totalCount: likedRestaurantMeta.totalCount,
       },
     },
   });
@@ -474,4 +459,19 @@ export async function getMyRestaurants(req, res) {
       .status(500)
       .json({ message: '내 식당 목록 조회 중 오류가 발생했습니다.' });
   }
+}
+
+function toRestaurantListDTO(restaurants) {
+  return restaurants.map((r) => ({
+    id: r.id,
+    name: r.name,
+    mainImageUrl: r.main_image_url,
+    address: {
+      road: r.road_address || null,
+      jibun: r.jibun_address || null,
+      sido: r.sido,
+      sigugun: r.sigugun,
+      dongmyun: r.dongmyun,
+    },
+  }));
 }

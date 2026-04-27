@@ -44,3 +44,22 @@ export async function getVisitedRestaurantMetaByUserId(userId) {
     totalCount: Number(row.totalCount ?? 0),
   };
 }
+
+export async function getLikedRestaurantMetaByUserId(userId) {
+  const sql = `
+    SELECT COUNT(*) AS totalCount
+    FROM restaurant_likes
+    WHERE user_id = :userId
+  `;
+
+  const rows = await sequelize.query(sql, {
+    type: QueryTypes.SELECT,
+    replacements: { userId },
+  });
+
+  const row = rows?.[0] ?? {};
+
+  return {
+    totalCount: Number(row.totalCount ?? 0),
+  };
+}

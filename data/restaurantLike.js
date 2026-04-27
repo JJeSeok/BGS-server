@@ -34,15 +34,6 @@ export async function findByRestaurantAndUser(
   });
 }
 
-export async function getRestaurantIdsByUserId(user_id) {
-  const rows = await RestaurantLike.findAll({
-    where: { user_id },
-    attributes: ['restaurant_id'],
-    raw: true,
-  });
-  return rows.map((r) => r.restaurant_id);
-}
-
 export async function remove(user_id, restaurant_id, { transaction } = {}) {
   return RestaurantLike.destroy({
     where: { user_id, restaurant_id },
