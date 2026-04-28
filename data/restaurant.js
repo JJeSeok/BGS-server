@@ -145,6 +145,8 @@ export const Restaurant = sequelize.define(
 const LIMIT = 20;
 const DEFAULT_RADIUS_KM = 5;
 const MYLOCATION_RADIUS_KM = 10;
+const MAP_MARKER_RADIUS_KM = 2;
+const MAP_MARKER_LIMIT = 100;
 const M_GLOBAL = 20;
 const M_COHORT = 15;
 const W_POP = 0.05;
@@ -510,6 +512,51 @@ export async function getAllRestaurants({
     : null;
 
   return { rows: sliced, hasMore, nextCursor };
+}
+
+export async function getMapRestaurants({ lat, lng }) {
+  const userLat = Number(lat);
+  const userLng = Number(lng);
+  const box = buildBoundingBox({
+    userLat,
+    userLng,
+    radiusKm: MAP_MARKER_RADIUS_KM,
+  });
+  const distanceSql = haversineKmExprRounded();
+
+  return sequelize.query(
+    `SELECT
+      r.id,
+      r.name,
+      r.category,
+      r.rating_avg,
+      r.review_count,
+      COALESCE(NULLIF(r.road_address, ''), NULLIF(r.jibun_address, '')) AS address,
+      r.lat,
+      r.lng,
+      ${distanceSql} AS distance
+    FROM restaurants AS r
+    WHERE r.lat IS NOT NULL
+      AND r.lng IS NOT NULL
+      AND r.lat BETWEEN :minLat AND :maxLat
+      AND r.lng BETWEEN :minLng AND :maxLng
+      AND ${haversineKmExprRaw()} <= :radiusKm
+    ORDER BY distance ASC, r.id ASC
+    LIMIT :limit`,
+    {
+      type: QueryTypes.SELECT,
+      replacements: {
+        userLat,
+        userLng,
+        radiusKm: MAP_MARKER_RADIUS_KM,
+        limit: MAP_MARKER_LIMIT,
+        minLat: box.minLat,
+        maxLat: box.maxLat,
+        minLng: box.minLng,
+        maxLng: box.maxLng,
+      },
+    },
+  );
 }
 
 export async function getRestaurantById(id) {

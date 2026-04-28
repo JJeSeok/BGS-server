@@ -11,6 +11,9 @@ const router = express.Router();
 // GET /restaurants
 router.get('/', optionalAuth, restaurantController.getRestaurants);
 
+// GET /restaurants/map
+router.get('/map', restaurantController.getMapRestaurants);
+
 // GET /restaurants/owner/:id/edit
 router.get(
   '/owner/:id/edit',

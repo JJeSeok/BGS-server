@@ -15,6 +15,15 @@ import { sequelize } from '../db/database.js';
 
 const MAX_SUB_IMAGE_COUNT = 5;
 
+function parseCoordinate(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
+
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate : null;
+}
+
 export async function getRestaurants(req, res) {
   const { sort, sido, q, lat, lng } = req.query;
   const cursor = req.query.cursor ?? null;
@@ -38,6 +47,18 @@ export async function getRestaurants(req, res) {
       .status(500)
       .json({ message: '레스토랑 목록 조회 중 오류가 발생했습니다.' });
   }
+}
+
+export async function getMapRestaurants(req, res) {
+  const lat = parseCoordinate(req.query.lat);
+  const lng = parseCoordinate(req.query.lng);
+
+  if (lat === null || lng === null) {
+    return res.status(400).json({ message: 'Valid lat and lng are required.' });
+  }
+
+  const restaurants = await restaurantRepository.getMapRestaurants({ lat, lng });
+  return res.status(200).json(restaurants.map(toMapMarkerDto));
 }
 
 export async function getRestaurant(req, res) {
@@ -406,6 +427,20 @@ function toCardDto(r) {
       sigugun: r.sigugun,
       dongmyun: r.dongmyun,
     },
+  };
+}
+
+function toMapMarkerDto(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    rating_avg: Number(r.rating_avg),
+    review_count: r.review_count,
+    address: r.address,
+    lat: Number(r.lat),
+    lng: Number(r.lng),
+    distance: Number(r.distance),
   };
 }
 
