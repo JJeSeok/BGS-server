@@ -52,13 +52,25 @@ export async function getRestaurants(req, res) {
 export async function getMapRestaurants(req, res) {
   const lat = parseCoordinate(req.query.lat);
   const lng = parseCoordinate(req.query.lng);
+  const q = String(req.query.q ?? '').trim() || null;
 
   if (lat === null || lng === null) {
     return res.status(400).json({ message: 'Valid lat and lng are required.' });
   }
 
-  const restaurants = await restaurantRepository.getMapRestaurants({ lat, lng });
-  return res.status(200).json(restaurants.map(toMapMarkerDto));
+  const { rows, keyword, radius, expanded } =
+    await restaurantRepository.getMapRestaurants({ lat, lng, q });
+  const restaurants = rows.map(toMapMarkerDto);
+
+  return res.status(200).json({
+    restaurants,
+    meta: {
+      keyword,
+      radius,
+      expanded,
+      count: restaurants.length,
+    },
+  });
 }
 
 export async function getRestaurant(req, res) {
