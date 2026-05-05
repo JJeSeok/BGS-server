@@ -261,10 +261,15 @@ export async function updateReview(req, res) {
 export async function deleteReview(req, res) {
   const reviewId = req.params.id;
   const userId = req.userId;
+  const isAdmin = req.user?.role === 'admin';
 
   try {
     const { deleted, restaurantId, deletedImageUrls } =
-      await reviewQueries.deleteReviewWithImageUrls(reviewId, userId);
+      await reviewQueries.deleteReviewWithImageUrls(
+        reviewId,
+        userId,
+        isAdmin,
+      );
 
     if (!deleted) {
       return res

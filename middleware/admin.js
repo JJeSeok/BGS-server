@@ -1,16 +1,14 @@
-import { User } from '../data/user.js';
+const AUTH_ERROR = { message: 'Authentication Error' };
+const ADMIN_ERROR = { message: 'Admin access required' };
 
-export async function isAdmin(req, res, next) {
-  try {
-    const me = await User.findByPk(req.userId, { attributes: ['id', 'role'] });
-    if (!me || me.role !== 'admin') {
-      return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
-    }
-    next();
-  } catch (err) {
-    console.error(err);
-    return res
-      .status(500)
-      .json({ message: '권한 확인 중 오류가 발생했습니다.' });
+export function isAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json(AUTH_ERROR);
   }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json(ADMIN_ERROR);
+  }
+
+  next();
 }

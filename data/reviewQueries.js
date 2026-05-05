@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
@@ -8,6 +8,8 @@ import * as restaurantStats from './restaurantStats.js';
 import * as cohortRepository from '../data/restaurantCohortStat.js';
 
 const LIMIT = 5;
+const ADMIN_LIMIT = 50;
+const ADMIN_IMAGE_LIMIT = 3;
 const ALLOWED = new Set(['good', 'ok', 'bad']);
 
 function applyKeysetCursorWhere(where, cursor) {
@@ -17,6 +19,59 @@ function applyKeysetCursorWhere(where, cursor) {
     { createdAt: { [Op.lt]: cursor.createdAt } },
     { createdAt: cursor.createdAt, id: { [Op.lt]: cursor.id } },
   ];
+}
+
+function parseAdminCursor(cursor) {
+  if (!cursor || typeof cursor !== 'string') return null;
+
+  const [createdAt, idStr] = cursor.split('|');
+  if (!createdAt || !idStr) return null;
+
+  const id = Number(idStr);
+
+  if (!Number.isFinite(id)) return null;
+  return { createdAt, id };
+}
+
+function parseRequiredAdminCursor(cursor) {
+  const parsed = parseAdminCursor(cursor);
+  if (!parsed) {
+    const error = new Error('INVALID_CURSOR');
+    error.code = 'INVALID_CURSOR';
+    throw error;
+  }
+
+  return parsed;
+}
+
+async function getAdminReviewImages(reviewIds) {
+  if (!reviewIds.length) return {};
+
+  const rows = await ReviewImage.findAll({
+    where: { review_id: { [Op.in]: reviewIds } },
+    attributes: ['id', 'review_id', 'url', 'sort_order'],
+    order: [
+      ['review_id', 'ASC'],
+      ['sort_order', 'ASC'],
+      ['id', 'ASC'],
+    ],
+    raw: true,
+  });
+
+  const map = {};
+  for (const row of rows) {
+    const reviewId = row.review_id;
+    if (!map[reviewId]) map[reviewId] = [];
+    if (map[reviewId].length >= ADMIN_IMAGE_LIMIT) continue;
+
+    map[reviewId].push({
+      id: row.id,
+      url: row.url,
+      sortOrder: row.sort_order,
+    });
+  }
+
+  return map;
 }
 
 async function runReviewKeyset(where) {
@@ -101,6 +156,91 @@ export async function getOneWithImages(id) {
   });
 
   return review;
+}
+
+export async function getAdminReviewsKeyset({ q, cursor } = {}) {
+  const where = [];
+  const replacements = { limit: ADMIN_LIMIT + 1 };
+
+  const cursorObj = cursor ? parseRequiredAdminCursor(cursor) : null;
+  if (cursorObj) {
+    where.push(`
+      (
+        r.createdAt < :cursorCreatedAt
+        OR (r.createdAt = :cursorCreatedAt AND r.id < :cursorId)
+      )
+    `);
+    replacements.cursorCreatedAt = cursorObj.createdAt;
+    replacements.cursorId = cursorObj.id;
+  }
+
+  const keyword = String(q ?? '').trim();
+  if (keyword) {
+    where.push(`
+      (
+        r.content LIKE :keyword
+        OR u.name LIKE :keyword
+        OR res.name LIKE :keyword
+      )
+    `);
+    replacements.keyword = `%${keyword}%`;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const rows = await sequelize.query(
+    `
+    SELECT
+      r.id,
+      r.content,
+      r.rating,
+      r.createdAt,
+      DATE_FORMAT(r.createdAt, '%Y-%m-%d %H:%i:%s') AS cursorCreatedAt,
+      u.id AS userId,
+      u.name AS userName,
+      res.id AS restaurantId,
+      res.name AS restaurantName,
+      COALESCE(NULLIF(res.road_address, ''), NULLIF(res.jibun_address, '')) AS restaurantAddress,
+      (
+        SELECT COUNT(*)
+        FROM review_images ri
+        WHERE ri.review_id = r.id
+      ) AS imageCount,
+      (
+        SELECT COUNT(*)
+        FROM review_reactions rr
+        WHERE rr.review_id = r.id AND rr.type = 'like'
+      ) AS likeCount,
+      (
+        SELECT COUNT(*)
+        FROM review_reactions rr
+        WHERE rr.review_id = r.id AND rr.type = 'dislike'
+      ) AS dislikeCount
+    FROM reviews r
+    INNER JOIN users u ON u.id = r.user_id
+    INNER JOIN restaurants res ON res.id = r.restaurant_id
+    ${whereSql}
+    ORDER BY r.createdAt DESC, r.id DESC
+    LIMIT :limit
+    `,
+    { type: QueryTypes.SELECT, replacements },
+  );
+
+  const hasMore = rows.length > ADMIN_LIMIT;
+  const sliced = hasMore ? rows.slice(0, ADMIN_LIMIT) : rows;
+
+  const last = sliced[sliced.length - 1];
+  const nextCursor =
+    hasMore && last ? `${last.cursorCreatedAt}|${last.id}` : null;
+
+  const reviewIds = sliced.map((row) => row.id);
+  const imagesMap = await getAdminReviewImages(reviewIds);
+  const rowsWithImages = sliced.map((row) => ({
+    ...row,
+    images: imagesMap[row.id] ?? [],
+  }));
+
+  return { rows: rowsWithImages, hasMore, nextCursor };
 }
 
 export async function updateReviewWithImages(reviewId, userId, payload, files) {
@@ -199,11 +339,15 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
   });
 }
 
-export async function deleteReviewWithImageUrls(reviewId, userId) {
+export async function deleteReviewWithImageUrls(reviewId, userId, isAdmin) {
   return sequelize.transaction(async (t) => {
+    const where = isAdmin
+      ? { id: reviewId }
+      : { id: reviewId, user_id: userId };
+
     const review = await Review.findOne({
-      where: { id: reviewId, user_id: userId },
-      attributes: ['id', 'restaurant_id', 'rating'],
+      where,
+      attributes: ['id', 'restaurant_id', 'user_id', 'rating'],
       include: [
         {
           model: ReviewImage,
@@ -225,11 +369,12 @@ export async function deleteReviewWithImageUrls(reviewId, userId) {
     }
 
     const restaurantId = review.restaurant_id;
+    const reviewAuthorId = review.user_id;
     const rating = review.rating;
     const deletedImageUrls = (review.images ?? []).map((img) => img.url);
 
     const deletedCount = await Review.destroy({
-      where: { id: reviewId, user_id: userId },
+      where,
       transaction: t,
     });
 
@@ -240,7 +385,7 @@ export async function deleteReviewWithImageUrls(reviewId, userId) {
         transaction: t,
       });
 
-      const user = await User.findByPk(userId, { transaction: t });
+      const user = await User.findByPk(reviewAuthorId, { transaction: t });
       const ageBand = calcAgeBandFromBirth(user?.birth);
       const gender = mapGenderToCohort(user?.gender);
 
