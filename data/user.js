@@ -1,5 +1,8 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import { sequelize } from '../db/database.js';
+
+const ADMIN_LIMIT = 50;
+const USER_STATUS = new Set(['active', 'suspended']);
 
 export const User = sequelize.define(
   'user',
@@ -72,6 +75,15 @@ export const User = sequelize.define(
       allowNull: false,
       defaultValue: 'user',
     },
+    status: {
+      type: DataTypes.ENUM('active', 'suspended'),
+      allowNull: false,
+      defaultValue: 'active',
+    },
+    suspended_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   { timestamps: false },
 );
@@ -102,4 +114,65 @@ export async function updatePassword(user, password) {
 
 export async function update(id, updateData) {
   return User.findByPk(id).then((user) => user.update(updateData));
+}
+
+export async function findAdminUsers({ q, status, cursor } = {}) {
+  const where = {};
+
+  const keyword = String(q ?? '').trim();
+  if (keyword) {
+    where[Op.or] = [
+      { username: { [Op.like]: `%${keyword}%` } },
+      { name: { [Op.like]: `%${keyword}%` } },
+    ];
+  }
+
+  if (status) {
+    if (!USER_STATUS.has(status)) {
+      const error = new Error('INVALID_STATUS');
+      error.code = 'INVALID_STATUS';
+      throw error;
+    }
+    where.status = status;
+  }
+
+  if (cursor) {
+    const id = Number(cursor);
+    if (!Number.isInteger(id) || id <= 0) {
+      const error = new Error('INVALID_CURSOR');
+      error.code = 'INVALID_CURSOR';
+      throw error;
+    }
+    where.id = { [Op.lt]: id };
+  }
+
+  const rows = await User.findAll({
+    where,
+    attributes: ['id', 'username', 'name', 'status', 'suspended_at'],
+    order: [['id', 'DESC']],
+    limit: ADMIN_LIMIT + 1,
+  });
+
+  const hasMore = rows.length > ADMIN_LIMIT;
+  const sliced = hasMore ? rows.slice(0, ADMIN_LIMIT) : rows;
+  const last = sliced[sliced.length - 1];
+  const nextCursor = hasMore && last ? String(last.id) : null;
+
+  return { rows: sliced, hasMore, nextCursor };
+}
+
+export async function updateStatus(id, status) {
+  if (!USER_STATUS.has(status)) {
+    const error = new Error('INVALID_STATUS');
+    error.code = 'INVALID_STATUS';
+    throw error;
+  }
+
+  const user = await User.findByPk(id);
+  if (!user) return null;
+
+  return user.update({
+    status,
+    suspended_at: status === 'suspended' ? new Date() : null,
+  });
 }

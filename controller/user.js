@@ -57,6 +57,12 @@ export async function login(req, res) {
       .json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
 
+  if (user.status === 'suspended') {
+    return res
+      .status(403)
+      .json({ message: '비활성화된 계정입니다. 관리자에게 문의해 주세요.' });
+  }
+
   const isValidPassword = await bcrypt.compare(password, user.password);
   if (!isValidPassword) {
     return res

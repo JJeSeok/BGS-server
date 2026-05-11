@@ -32,6 +32,7 @@ function toAdminReviewDTO(row) {
     createdAt: row.createdAt,
     user: {
       id: row.userId,
+      username: row.username,
       name: row.userName,
     },
     restaurant: {

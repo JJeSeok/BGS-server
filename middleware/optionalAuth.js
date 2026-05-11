@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
+import * as userRepository from '../data/user.js';
 import { config } from '../config.js';
 
-export function optionalAuth(req, res, next) {
+export async function optionalAuth(req, res, next) {
   const authHeader = req.get('Authorization');
   if (!(authHeader && authHeader.startsWith('Bearer '))) {
     return next();
@@ -11,7 +12,10 @@ export function optionalAuth(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, config.jwt.secretKey);
-    req.userId = decoded.id;
+    const user = await userRepository.findById(decoded.id);
+    if (user && user.status !== 'suspended') {
+      req.userId = user.id;
+    }
   } catch (err) {}
 
   next();

@@ -197,6 +197,7 @@ export async function getAdminReviewsKeyset({ q, cursor } = {}) {
       r.createdAt,
       DATE_FORMAT(r.createdAt, '%Y-%m-%d %H:%i:%s') AS cursorCreatedAt,
       u.id AS userId,
+      u.username AS username,
       u.name AS userName,
       res.id AS restaurantId,
       res.name AS restaurantName,
