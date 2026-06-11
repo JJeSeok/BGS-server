@@ -40,7 +40,9 @@ const validateSignup = [
     .notEmpty()
     .withMessage('이름을 입력하세요.')
     .matches(/^[가-힣a-zA-Z]{2,}$/)
-    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+    .withMessage(
+      '이름은 한글 또는 영문만 사용 가능하며 2자 이상이어야 합니다.',
+    ),
   body('birth')
     .notEmpty()
     .withMessage('생년월일을 입력하세요.')
@@ -76,7 +78,9 @@ const validateForgotIdPhone = [
     .notEmpty()
     .withMessage('이름을 입력하세요.')
     .matches(/^[가-힣a-zA-Z]{2,}$/)
-    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+    .withMessage(
+      '이름은 한글 또는 영문만 사용 가능하며 2자 이상이어야 합니다.',
+    ),
   body('phone')
     .trim()
     .notEmpty()
@@ -93,7 +97,9 @@ const validateForgotIdEmail = [
     .notEmpty()
     .withMessage('이름을 입력하세요.')
     .matches(/^[가-힣a-zA-Z]{2,}$/)
-    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+    .withMessage(
+      '이름은 한글 또는 영문만 사용 가능하며 2자 이상이어야 합니다.',
+    ),
   body('email')
     .trim()
     .notEmpty()
@@ -185,7 +191,9 @@ const validateUpdateProfile = [
     .notEmpty()
     .withMessage('이름을 입력하세요.')
     .matches(/^[가-힣a-zA-Z]{2,}$/)
-    .withMessage('이름은 한글 또는 영문 2자 이상이어야 합니다.'),
+    .withMessage(
+      '이름은 한글 또는 영문만 사용 가능하며 2자 이상이어야 합니다.',
+    ),
   body('email')
     .trim()
     .notEmpty()

@@ -134,7 +134,7 @@ export async function createRestaurant(req, res) {
 
   if (Array.isArray(photos)) {
     const rows = await createPhoto(restaurant.dataValues.id, photos);
-    const url = await restaurantPhotoRepository.create(rows);
+    await restaurantPhotoRepository.create(rows);
   }
 
   res.status(201).json(restaurant);
@@ -156,14 +156,19 @@ export async function deleteRestaurant(req, res) {
   const restaurantId = req.params.id;
 
   try {
-    const { deleted, deletedImageUrls } =
+    const { deleted, deletedReviewImageUrls, deletedRestaurantImageUrls } =
       await restaurantQueries.deleteRestaurant(restaurantId);
 
     if (!deleted) {
       return res.status(404).json({ message: '식당이 존재하지 않습니다.' });
     }
 
-    await safeUnlinkManyByUrls(deletedImageUrls);
+    await safeUnlinkManyByUrls(deletedReviewImageUrls);
+
+    const restaurantImagePaths = deletedRestaurantImageUrls
+      .map((url) => getRestaurantImageFilePath(url))
+      .filter(Boolean);
+    await safeUnlinkMany(restaurantImagePaths);
 
     return res.sendStatus(204);
   } catch (err) {

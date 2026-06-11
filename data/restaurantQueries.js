@@ -2,6 +2,7 @@ import * as restaurantRepository from './restaurant.js';
 import * as restaurantLikeRepository from './restaurantLike.js';
 import * as cohortRepository from './restaurantCohortStat.js';
 import { Restaurant } from './restaurant.js';
+import { RestaurantPhoto } from './restaurantPhoto.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
@@ -9,7 +10,19 @@ import { sequelize } from '../db/database.js';
 import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 
 export async function deleteRestaurant(restaurantId) {
-  const rows = await ReviewImage.findAll({
+  const restaurant = await Restaurant.findByPk(restaurantId, {
+    attributes: ['main_image_url'],
+  });
+
+  if (!restaurant) {
+    return {
+      deleted: false,
+      deletedReviewImageUrls: [],
+      deletedRestaurantImageUrls: [],
+    };
+  }
+
+  const reviewImageRows = await ReviewImage.findAll({
     include: [
       {
         model: Review,
@@ -22,7 +35,19 @@ export async function deleteRestaurant(restaurantId) {
     raw: true,
   });
 
-  const deletedImageUrls = rows.map((r) => r.url).filter(Boolean);
+  const restaurantPhotoRows = await RestaurantPhoto.findAll({
+    where: { restaurant_id: restaurantId },
+    attributes: ['url'],
+    raw: true,
+  });
+
+  const deletedReviewImageUrls = reviewImageRows
+    .map((r) => r.url)
+    .filter(Boolean);
+  const deletedRestaurantImageUrls = [
+    restaurant.main_image_url,
+    ...restaurantPhotoRows.map((r) => r.url),
+  ].filter(Boolean);
 
   const deletedCount = await Restaurant.destroy({
     where: { id: restaurantId },
@@ -30,7 +55,9 @@ export async function deleteRestaurant(restaurantId) {
 
   return {
     deleted: deletedCount > 0,
-    deletedImageUrls: deletedCount > 0 ? deletedImageUrls : [],
+    deletedReviewImageUrls: deletedCount > 0 ? deletedReviewImageUrls : [],
+    deletedRestaurantImageUrls:
+      deletedCount > 0 ? deletedRestaurantImageUrls : [],
   };
 }
 

@@ -50,7 +50,6 @@ export async function findAdminRequests({
 }
 
 export async function approveRequest(requestId, adminUserId) {
-  let copiedImage = null;
   let oldImageUrl = null;
 
   const result = await sequelize.transaction(async (t) => {
@@ -77,7 +76,7 @@ export async function approveRequest(requestId, adminUserId) {
     let restaurantMainImageUrl = '/images/흠.png';
 
     if (oldImageUrl) {
-      copiedImage = await copyRequestImageToRestaurant(oldImageUrl);
+      const copiedImage = await copyRequestImageToRestaurant(oldImageUrl);
       if (copiedImage?.newImageUrl) {
         restaurantMainImageUrl = copiedImage.newImageUrl;
       }

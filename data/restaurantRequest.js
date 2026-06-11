@@ -1,4 +1,4 @@
-import { DataTypes, Op, QueryTypes } from 'sequelize';
+import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 export const RestaurantRequest = sequelize.define(
@@ -91,7 +91,7 @@ export const RestaurantRequest = sequelize.define(
   {
     charset: 'utf8mb4',
     collate: 'utf8mb4_0900_ai_ci',
-  }
+  },
 );
 
 export async function create(restaurant) {

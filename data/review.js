@@ -51,16 +51,7 @@ export async function getReviewById(id) {
 
 export async function create(review, transaction) {
   const options = transaction ? { transaction } : {};
-  return Review.create(review, options); //
-}
-
-export async function findRestaurantIdsByUserId(user_id) {
-  const rows = await Review.findAll({
-    where: { user_id },
-    attributes: ['restaurant_id'],
-    raw: true,
-  });
-  return rows.map((r) => r.restaurant_id);
+  return Review.create(review, options);
 }
 
 export async function getRestaurantReviewStats(restaurant_id, blockedIds = []) {

@@ -1,4 +1,4 @@
-import { DataTypes, Op, QueryTypes } from 'sequelize';
+import { DataTypes, QueryTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
 import { User } from './user.js';
 import { Menu } from './menu.js';

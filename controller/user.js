@@ -206,7 +206,8 @@ export async function getMyProfile(req, res) {
     return res.status(404).json({ message: 'User not found' });
   }
 
-  res.status(200).json(user);
+  const { password, role, status, suspended_at, ...profile } = user.toJSON();
+  res.status(200).json(profile);
 }
 
 export async function checkMyPassword(req, res) {

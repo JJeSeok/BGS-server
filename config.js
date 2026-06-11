@@ -14,8 +14,11 @@ export const config = {
     secretKey: required('JWT_SECRET'),
     expiresInSec: parseInt(required('JWT_EXPIRES_SEC', 86400)),
   },
+  cors: {
+    allowOrigin: required('CORS_ALLOW_ORIGIN'),
+  },
   bcrypt: {
-    saltRounds: parseInt(required('BCRYPT_SATL_ROUNDS', 12)),
+    saltRounds: parseInt(required('BCRYPT_SALT_ROUNDS', 12)),
   },
   db: {
     host: required('DB_HOST'),
