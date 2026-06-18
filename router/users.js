@@ -223,6 +223,11 @@ const validateUpdateProfile = [
   validate,
 ];
 
+const validateDeleteAccount = [
+  body('password').trim().notEmpty().withMessage('비밀번호를 입력해 주세요.'),
+  validate,
+];
+
 // POST /users/signup
 router.post('/signup', validateSignup, userController.signup);
 
@@ -301,6 +306,14 @@ router.patch(
   isAuth,
   validateUpdateProfile,
   userController.updateMyProfile,
+);
+
+// DELETE /users/me
+router.delete(
+  '/me',
+  isAuth,
+  validateDeleteAccount,
+  userController.deleteMyAccount,
 );
 
 // PUT /users/me/profile-image

@@ -2,7 +2,7 @@ import { DataTypes, Op } from 'sequelize';
 import { sequelize } from '../db/database.js';
 
 const ADMIN_LIMIT = 50;
-const USER_STATUS = new Set(['active', 'suspended']);
+const USER_STATUS = new Set(['active', 'suspended', 'deleted']);
 
 export const User = sequelize.define(
   'user',
@@ -76,7 +76,7 @@ export const User = sequelize.define(
       defaultValue: 'user',
     },
     status: {
-      type: DataTypes.ENUM('active', 'suspended'),
+      type: DataTypes.ENUM('active', 'suspended', 'deleted'),
       allowNull: false,
       defaultValue: 'active',
     },
@@ -114,6 +114,17 @@ export async function updatePassword(user, password) {
 
 export async function update(id, updateData) {
   return User.findByPk(id).then((user) => user.update(updateData));
+}
+
+export async function softDelete(id, updateData) {
+  const user = await User.findByPk(id);
+  if (!user) return null;
+
+  return user.update({
+    ...updateData,
+    status: 'deleted',
+    suspended_at: null,
+  });
 }
 
 export async function findAdminUsers({ q, status, cursor } = {}) {

@@ -17,7 +17,7 @@ export const isAuth = async (req, res, next) => {
     }
 
     const user = await userRepository.findById(decoded.id);
-    if (!user || user.status === 'suspended') {
+    if (!user || user.status !== 'active') {
       return res.status(401).json(AUTH_ERROR);
     }
     req.userId = user.id;

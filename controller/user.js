@@ -57,7 +57,7 @@ export async function login(req, res) {
       .json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
 
-  if (user.status === 'suspended') {
+  if (user.status !== 'active') {
     return res
       .status(403)
       .json({ message: '비활성화된 계정입니다. 관리자에게 문의해 주세요.' });
@@ -224,7 +224,7 @@ export async function checkMyPassword(req, res) {
 
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
-    return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });
+    return res.status(403).json({ message: '비밀번호가 올바르지 않습니다.' });
   }
 
   return res.sendStatus(200);
@@ -244,7 +244,7 @@ export async function updateMyProfile(req, res) {
 
   const isValid = await bcrypt.compare(currentPassword, user.password);
   if (!isValid) {
-    return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });
+    return res.status(403).json({ message: '비밀번호가 올바르지 않습니다.' });
   }
 
   const updateData = {};
@@ -398,6 +398,42 @@ export async function deleteMyProfileImage(req, res) {
       .status(500)
       .json({ message: '프로필 이미지 삭제 중 오류가 발생했습니다.' });
   }
+}
+
+export async function deleteMyAccount(req, res) {
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: '비밀번호를 입력해 주세요.' });
+  }
+
+  const user = await userRepository.findById(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    return res.status(403).json({ message: '비밀번호가 올바르지 않습니다.' });
+  }
+
+  const profileImagePath = getProfileImageFilePath(user.profile_image_url);
+  const randomPassword = crypto.randomBytes(32).toString('hex');
+  const hashedPassword = await bcrypt.hash(
+    randomPassword,
+    config.bcrypt.saltRounds,
+  );
+
+  await userRepository.softDelete(user.id, {
+    username: `deleted${user.id}`,
+    password: hashedPassword,
+    name: '탈퇴한 사용자',
+    email: `deleted${user.id}@deleted.local`,
+    phone: `deleted${user.id}`,
+    profile_image_url: null,
+  });
+
+  await safeUnlink(profileImagePath);
+
+  return res.sendStatus(204);
 }
 
 export async function blockUser(req, res) {

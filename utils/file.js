@@ -16,6 +16,8 @@ const UPLOADS_RESTAURANTS_DIR = path.join(
 );
 
 export function getReviewImageFilePath(url) {
+  if (typeof url !== 'string') return null;
+
   const prefix = '/uploads/reviews/';
   if (!url.startsWith(prefix)) return null;
 
@@ -24,6 +26,8 @@ export function getReviewImageFilePath(url) {
 }
 
 export function getProfileImageFilePath(url) {
+  if (typeof url !== 'string') return null;
+
   const prefix = '/uploads/profiles/';
   if (!url.startsWith(prefix)) return null;
 
@@ -32,6 +36,8 @@ export function getProfileImageFilePath(url) {
 }
 
 export function getRestaurantRequestImageFilePath(url) {
+  if (typeof url !== 'string') return null;
+
   const prefix = '/uploads/requests/';
   if (!url.startsWith(prefix)) return null;
 
@@ -40,6 +46,8 @@ export function getRestaurantRequestImageFilePath(url) {
 }
 
 export function getRestaurantImageFilePath(url) {
+  if (typeof url !== 'string') return null;
+
   const prefix = '/uploads/restaurants/';
   if (!url.startsWith(prefix)) return null;
 

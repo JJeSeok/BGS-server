@@ -13,7 +13,7 @@ export async function optionalAuth(req, res, next) {
   try {
     const decoded = jwt.verify(token, config.jwt.secretKey);
     const user = await userRepository.findById(decoded.id);
-    if (user && user.status !== 'suspended') {
+    if (user && user.status === 'active') {
       req.userId = user.id;
     }
   } catch (err) {}
