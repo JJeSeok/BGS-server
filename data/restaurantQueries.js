@@ -3,6 +3,7 @@ import * as restaurantLikeRepository from './restaurantLike.js';
 import * as cohortRepository from './restaurantCohortStat.js';
 import { Restaurant } from './restaurant.js';
 import { RestaurantPhoto } from './restaurantPhoto.js';
+import { RestaurantRequest } from './restaurantRequest.js';
 import { Review } from './review.js';
 import { ReviewImage } from './reviewImage.js';
 import { User } from './user.js';
@@ -10,55 +11,70 @@ import { sequelize } from '../db/database.js';
 import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
 
 export async function deleteRestaurant(restaurantId) {
-  const restaurant = await Restaurant.findByPk(restaurantId, {
-    attributes: ['main_image_url'],
-  });
+  return sequelize.transaction(async (t) => {
+    const restaurant = await Restaurant.findByPk(restaurantId, {
+      attributes: ['main_image_url'],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
 
-  if (!restaurant) {
-    return {
-      deleted: false,
-      deletedReviewImageUrls: [],
-      deletedRestaurantImageUrls: [],
-    };
-  }
+    if (!restaurant) {
+      return {
+        deleted: false,
+        deletedReviewImageUrls: [],
+        deletedRestaurantImageUrls: [],
+      };
+    }
 
-  const reviewImageRows = await ReviewImage.findAll({
-    include: [
+    const reviewImageRows = await ReviewImage.findAll({
+      include: [
+        {
+          model: Review,
+          attributes: [],
+          where: { restaurant_id: restaurantId },
+          required: true,
+        },
+      ],
+      attributes: ['url'],
+      raw: true,
+      transaction: t,
+    });
+
+    const restaurantPhotoRows = await RestaurantPhoto.findAll({
+      where: { restaurant_id: restaurantId },
+      attributes: ['url'],
+      raw: true,
+      transaction: t,
+    });
+
+    const deletedReviewImageUrls = reviewImageRows
+      .map((r) => r.url)
+      .filter(Boolean);
+    const deletedRestaurantImageUrls = [
+      restaurant.main_image_url,
+      ...restaurantPhotoRows.map((r) => r.url),
+    ].filter(Boolean);
+
+    await RestaurantRequest.update(
+      { restaurant_deleted: true },
       {
-        model: Review,
-        attributes: [],
-        where: { restaurant_id: restaurantId },
-        required: true,
+        where: { approved_restaurant_id: restaurantId },
+        transaction: t,
       },
-    ],
-    attributes: ['url'],
-    raw: true,
+    );
+
+    const deletedCount = await Restaurant.destroy({
+      where: { id: restaurantId },
+      transaction: t,
+    });
+
+    return {
+      deleted: deletedCount > 0,
+      deletedReviewImageUrls: deletedCount > 0 ? deletedReviewImageUrls : [],
+      deletedRestaurantImageUrls:
+        deletedCount > 0 ? deletedRestaurantImageUrls : [],
+    };
   });
-
-  const restaurantPhotoRows = await RestaurantPhoto.findAll({
-    where: { restaurant_id: restaurantId },
-    attributes: ['url'],
-    raw: true,
-  });
-
-  const deletedReviewImageUrls = reviewImageRows
-    .map((r) => r.url)
-    .filter(Boolean);
-  const deletedRestaurantImageUrls = [
-    restaurant.main_image_url,
-    ...restaurantPhotoRows.map((r) => r.url),
-  ].filter(Boolean);
-
-  const deletedCount = await Restaurant.destroy({
-    where: { id: restaurantId },
-  });
-
-  return {
-    deleted: deletedCount > 0,
-    deletedReviewImageUrls: deletedCount > 0 ? deletedReviewImageUrls : [],
-    deletedRestaurantImageUrls:
-      deletedCount > 0 ? deletedRestaurantImageUrls : [],
-  };
 }
 
 export async function toggleLike({ userId, restaurantId }) {
@@ -93,6 +109,12 @@ export async function toggleLike({ userId, restaurantId }) {
       isLiked = false;
       delta = -1;
     } else {
+      if (restaurant.status === 'closed') {
+        const err = new Error('폐업한 식당은 찜할 수 없습니다.');
+        err.status = 409;
+        throw err;
+      }
+
       await restaurantLikeRepository.create(userId, restaurantId, {
         transaction: t,
       });

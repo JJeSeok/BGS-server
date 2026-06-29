@@ -131,6 +131,15 @@ export const Restaurant = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM('active', 'closed'),
+      allowNull: false,
+      defaultValue: 'active',
+    },
+    closed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     charset: 'utf8mb4',
@@ -138,11 +147,14 @@ export const Restaurant = sequelize.define(
     indexes: [
       { name: 'idx_restaurants_lat_lng', fields: ['lat', 'lng'] },
       { name: 'idx_restaurant_sido', fields: ['sido'] },
+      { name: 'idx_restaurant_status', fields: ['status'] },
     ],
   },
 );
 
 const LIMIT = 20;
+const ADMIN_LIMIT = 50;
+const ADMIN_RESTAURANT_STATUS = new Set(['active', 'closed']);
 const DEFAULT_RADIUS_KM = 5;
 const MYLOCATION_RADIUS_KM = 10;
 const MAP_MARKER_RADIUS_KM = 2;
@@ -357,8 +369,8 @@ export async function getAllRestaurants({
   const sortSpec = resolveSort(sortKey);
   const orderBy = buildOrderBy(sortSpec);
 
-  const where = [];
-  const replacements = { limit: LIMIT + 1 };
+  const where = ['r.status = :activeStatus'];
+  const replacements = { limit: LIMIT + 1, activeStatus: 'active' };
 
   if (sido && typeof sido === 'string') {
     where.push('r.sido = :sido');
@@ -470,7 +482,11 @@ export async function getAllRestaurants({
     }
 
     joinSql = `
-      CROSS JOIN (SELECT AVG(rating_avg) AS global_avg FROM restaurants) AS stats
+      CROSS JOIN (
+        SELECT AVG(rating_avg) AS global_avg
+        FROM restaurants
+        WHERE status = 'active'
+      ) AS stats
       ${joinSql}
     `;
 
@@ -568,7 +584,8 @@ async function findMapRestaurantsByRadius({
       r.lng,
       ${distanceSql} AS distance
     FROM restaurants AS r
-    WHERE r.lat IS NOT NULL
+    WHERE r.status = 'active'
+      AND r.lat IS NOT NULL
       AND r.lng IS NOT NULL
       AND r.lat BETWEEN :minLat AND :maxLat
       AND r.lng BETWEEN :minLng AND :maxLng
@@ -670,6 +687,157 @@ export async function update(id, updateData) {
     .then((restaurant) => restaurant.update(updateData));
 }
 
+export async function updateStatus(id, status) {
+  const restaurant = await Restaurant.findByPk(id);
+  if (!restaurant) return null;
+  if (restaurant.status === status) return restaurant;
+
+  return restaurant.update({
+    status,
+    closed_at: status === 'closed' ? new Date() : null,
+  });
+}
+
+export async function findAdminRestaurants({
+  q,
+  status,
+  sido,
+  cursor,
+} = {}) {
+  const where = [];
+  const replacements = { limit: ADMIN_LIMIT + 1 };
+
+  const cursorObj = cursor ? parseAdminRestaurantCursor(cursor) : null;
+  if (cursorObj) {
+    where.push(`
+      (
+        r.createdAt < :cursorCreatedAt
+        OR (r.createdAt = :cursorCreatedAt AND r.id < :cursorId)
+      )
+    `);
+    replacements.cursorCreatedAt = cursorObj.createdAt;
+    replacements.cursorId = cursorObj.id;
+  }
+
+  const normalizedStatus = String(status ?? '').trim();
+  if (normalizedStatus && normalizedStatus !== 'all') {
+    if (!ADMIN_RESTAURANT_STATUS.has(normalizedStatus)) {
+      const error = new Error('INVALID_STATUS');
+      error.code = 'INVALID_STATUS';
+      throw error;
+    }
+
+    where.push('r.status = :status');
+    replacements.status = normalizedStatus;
+  }
+
+  const normalizedSido = String(sido ?? '').trim();
+  if (normalizedSido) {
+    where.push('r.sido = :sido');
+    replacements.sido = normalizedSido;
+  }
+
+  const keyword = String(q ?? '').trim();
+  if (keyword.length > 100) {
+    const error = new Error('INVALID_QUERY');
+    error.code = 'INVALID_QUERY';
+    throw error;
+  }
+
+  if (keyword) {
+    const searchConditions = [
+      'r.name LIKE :keyword',
+      'r.branch_info LIKE :keyword',
+      'r.road_address LIKE :keyword',
+      'r.jibun_address LIKE :keyword',
+      'r.sido LIKE :keyword',
+      'r.sigugun LIKE :keyword',
+      'r.dongmyun LIKE :keyword',
+      'owner.username LIKE :keyword',
+      'owner.name LIKE :keyword',
+    ];
+
+    const numericId = Number(keyword);
+    if (Number.isInteger(numericId) && numericId > 0) {
+      searchConditions.unshift('r.id = :restaurantId');
+      replacements.restaurantId = numericId;
+    }
+
+    where.push(`(${searchConditions.join(' OR ')})`);
+    replacements.keyword = `%${keyword}%`;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const rows = await sequelize.query(
+    `
+    SELECT
+      r.id,
+      r.name,
+      r.branch_info AS branchInfo,
+      r.category,
+      r.main_image_url AS mainImageUrl,
+      r.road_address AS roadAddress,
+      r.jibun_address AS jibunAddress,
+      r.sido,
+      r.sigugun,
+      r.dongmyun,
+      r.status,
+      r.review_count AS reviewCount,
+      r.like_count AS likeCount,
+      r.createdAt,
+      r.closed_at AS closedAt,
+      DATE_FORMAT(r.createdAt, '%Y-%m-%d %H:%i:%s') AS cursorCreatedAt,
+      owner.id AS ownerId,
+      owner.username AS ownerUsername,
+      owner.name AS ownerName
+    FROM restaurants r
+    LEFT JOIN users owner ON owner.id = r.owner_id
+    ${whereSql}
+    ORDER BY r.createdAt DESC, r.id DESC
+    LIMIT :limit
+    `,
+    { type: QueryTypes.SELECT, replacements },
+  );
+
+  const hasMore = rows.length > ADMIN_LIMIT;
+  const sliced = hasMore ? rows.slice(0, ADMIN_LIMIT) : rows;
+  const last = sliced[sliced.length - 1];
+  const nextCursor =
+    hasMore && last ? `${last.cursorCreatedAt}|${last.id}` : null;
+
+  return { rows: sliced, hasMore, nextCursor };
+}
+
+function parseAdminRestaurantCursor(cursor) {
+  if (typeof cursor !== 'string') {
+    throwInvalidAdminRestaurantCursor();
+  }
+
+  const [createdAt, idValue, ...rest] = cursor.split('|');
+  const id = Number(idValue);
+  const isDateTime = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(
+    createdAt ?? '',
+  );
+
+  if (
+    rest.length > 0 ||
+    !isDateTime ||
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    throwInvalidAdminRestaurantCursor();
+  }
+
+  return { createdAt, id };
+}
+
+function throwInvalidAdminRestaurantCursor() {
+  const error = new Error('INVALID_CURSOR');
+  error.code = 'INVALID_CURSOR';
+  throw error;
+}
+
 export async function increaseInViewCount(id) {
   return Restaurant.increment('view_count', { by: 1, where: { id } });
 }
@@ -702,7 +870,7 @@ export async function getVisitedRestaurants(userId, cursor) {
     replacements.lastVisitedAt = lastVisitedAt;
     replacements.id = id;
     cursorSql = `
-        WHERE (
+        AND (
           v.lastVisitedAt < :lastVisitedAt
           OR (v.lastVisitedAt = :lastVisitedAt AND r.id < :id)
         )
@@ -720,6 +888,7 @@ export async function getVisitedRestaurants(userId, cursor) {
       WHERE user_id = :userId
       GROUP BY restaurant_id
     ) v ON v.restaurant_id = r.id
+    WHERE r.status = 'active'
     ${cursorSql}
     ORDER BY v.lastVisitedAt DESC, r.id DESC
     LIMIT :limit`,
@@ -764,6 +933,7 @@ export async function getLikedRestaurants(userId, cursor) {
     FROM restaurant_likes rl
     INNER JOIN restaurants r ON r.id = rl.restaurant_id
     WHERE rl.user_id = :userId
+      AND r.status = 'active'
     ${cursorSql}
     ORDER BY rl.createdAt DESC, r.id DESC
     LIMIT :limit`,
@@ -797,6 +967,8 @@ export async function getMyRestaurants(userId) {
       'takeout',
       'delivery',
       'reservation',
+      'status',
+      'closed_at',
     ],
     order: [['id', 'DESC']],
   });

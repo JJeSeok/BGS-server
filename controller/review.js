@@ -11,6 +11,7 @@ import * as cohortRepository from '../data/restaurantCohortStat.js';
 import {
   getReviewImageFilePath,
   safeUnlink,
+  safeUnlinkMany,
   safeUnlinkManyByUrls,
 } from '../utils/file.js';
 import { calcAgeBandFromBirth, mapGenderToCohort } from '../utils/cohort.js';
@@ -132,16 +133,25 @@ export async function createReview(req, res) {
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
 
   if (!restaurant) {
+    await cleanupUploadedReviewFiles(req.files);
     return res
       .status(404)
       .json({ message: `Restaurant id(${restaurantId}) not found` });
   }
+  if (restaurant.status === 'closed') {
+    await cleanupUploadedReviewFiles(req.files);
+    return res
+      .status(409)
+      .json({ message: '폐업한 식당에는 새 리뷰를 작성할 수 없습니다.' });
+  }
   if (!validateRating(Rating)) {
+    await cleanupUploadedReviewFiles(req.files);
     return res
       .status(400)
       .json({ message: '평점은 0~5점까지 0.5점 단위로 입력하세요.' });
   }
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    await cleanupUploadedReviewFiles(req.files);
     return res.status(400).json({ message: '리뷰를 입력해주세요.' });
   }
 
@@ -194,10 +204,15 @@ export async function createReview(req, res) {
     });
   } catch (err) {
     console.error(err);
+    await cleanupUploadedReviewFiles(req.files);
     return res
       .status(500)
       .json({ message: '리뷰 저장 중 오류가 발생했습니다.' });
   }
+}
+
+async function cleanupUploadedReviewFiles(files) {
+  await safeUnlinkMany((files ?? []).map((file) => file.path));
 }
 
 export async function updateReview(req, res) {

@@ -8,7 +8,6 @@ import {
   getRestaurantImageFilePath,
   safeUnlink,
   safeUnlinkMany,
-  safeUnlinkManyByUrls,
 } from '../utils/file.js';
 import { getRestaurantTodayInfo } from '../utils/restaurant.js';
 import { sequelize } from '../db/database.js';
@@ -103,82 +102,6 @@ export async function getRestaurant(req, res) {
       .json({ message: `Restaurant id(${restaurantId}) not found` });
 }
 
-export async function createRestaurant(req, res) {
-  const {
-    name,
-    category,
-    branch_info,
-    main_image_url,
-    sido,
-    sigugun,
-    dongmyun,
-    road_address,
-    jibun_address,
-    phone,
-    description,
-    photos,
-  } = req.body;
-  const restaurant = await restaurantRepository.create({
-    name,
-    category,
-    branch_info,
-    main_image_url,
-    sido,
-    sigugun,
-    dongmyun,
-    road_address,
-    jibun_address,
-    phone,
-    description,
-  });
-
-  if (Array.isArray(photos)) {
-    const rows = await createPhoto(restaurant.dataValues.id, photos);
-    await restaurantPhotoRepository.create(rows);
-  }
-
-  res.status(201).json(restaurant);
-}
-
-export async function updateRestaurant(req, res) {
-  const restaurantId = req.params.id;
-  const updateData = req.body;
-  const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
-  if (!restaurant) {
-    return res.sendStatus(404);
-  }
-
-  const updated = await restaurantRepository.update(restaurantId, updateData);
-  res.status(200).json(updated);
-}
-
-export async function deleteRestaurant(req, res) {
-  const restaurantId = req.params.id;
-
-  try {
-    const { deleted, deletedReviewImageUrls, deletedRestaurantImageUrls } =
-      await restaurantQueries.deleteRestaurant(restaurantId);
-
-    if (!deleted) {
-      return res.status(404).json({ message: '식당이 존재하지 않습니다.' });
-    }
-
-    await safeUnlinkManyByUrls(deletedReviewImageUrls);
-
-    const restaurantImagePaths = deletedRestaurantImageUrls
-      .map((url) => getRestaurantImageFilePath(url))
-      .filter(Boolean);
-    await safeUnlinkMany(restaurantImagePaths);
-
-    return res.sendStatus(204);
-  } catch (err) {
-    console.error(err);
-    return res
-      .status(500)
-      .json({ message: '식당 삭제 중 오류가 발생했습니다.' });
-  }
-}
-
 export async function getRestaurantForEdit(req, res) {
   const restaurantId = Number(req.params.id);
 
@@ -207,6 +130,29 @@ export async function getRestaurantForEdit(req, res) {
       .status(500)
       .json({ message: '레스토랑 편집 정보 조회 중 오류가 발생했습니다.' });
   }
+}
+
+export async function closeRestaurantForOwner(req, res) {
+  const restaurantId = Number(req.params.id);
+
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+    return res.status(400).json({ message: '레스토랑 id가 올바르지 않습니다.' });
+  }
+
+  const restaurant = await restaurantRepository.updateStatus(
+    restaurantId,
+    'closed',
+  );
+
+  if (!restaurant) {
+    return res.status(404).json({ message: '레스토랑을 찾을 수 없습니다.' });
+  }
+
+  return res.status(200).json({
+    id: restaurant.id,
+    status: restaurant.status,
+    closedAt: restaurant.closed_at,
+  });
 }
 
 export async function updateRestaurantForOwner(req, res) {
@@ -464,6 +410,8 @@ function toMapMarkerDto(r) {
 function toEditDto(restaurant, photos) {
   return {
     id: restaurant.id,
+    status: restaurant.status,
+    closedAt: restaurant.closed_at,
     name: restaurant.name,
     category: restaurant.category,
     branch_info: restaurant.branch_info,
@@ -517,16 +465,6 @@ function toEditDto(restaurant, photos) {
   };
 }
 
-async function createPhoto(id, photos) {
-  const maxOrder = await restaurantPhotoRepository.getMaxSortOrder(id);
-
-  return photos.map((p, i) => ({
-    restaurant_id: id,
-    url: p,
-    sort_order: maxOrder + 1 + i,
-  }));
-}
-
 export async function toggleRestaurantLike(req, res) {
   const restaurantId = req.params.id;
   const userId = req.userId;
@@ -538,7 +476,7 @@ export async function toggleRestaurantLike(req, res) {
     console.error(err);
     const status = err.status || 500;
     const message =
-      status === 404
+      status === 404 || status === 409
         ? err.message
         : '레스토랑 반응 저장 중 오류가 발생했습니다.';
     return res.status(status).json({ message });

@@ -1,12 +1,53 @@
 import express from 'express';
 import 'express-async-errors';
 import * as adminRestaurantRequestController from '../controller/adminRestaurantRequest.js';
+import * as adminRestaurantController from '../controller/adminRestaurant.js';
 import * as adminReviewController from '../controller/adminReview.js';
 import * as adminUserController from '../controller/adminUser.js';
 import { isAuth } from '../middleware/auth.js';
 import { isAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
+
+// GET /admin/restaurants
+router.get(
+  '/restaurants',
+  isAuth,
+  isAdmin,
+  adminRestaurantController.getAdminRestaurants,
+);
+
+// POST /admin/restaurants
+router.post(
+  '/restaurants',
+  isAuth,
+  isAdmin,
+  adminRestaurantController.createRestaurant,
+);
+
+// PUT /admin/restaurants/:id
+router.put(
+  '/restaurants/:id',
+  isAuth,
+  isAdmin,
+  adminRestaurantController.updateRestaurant,
+);
+
+// PATCH /admin/restaurants/:id/status
+router.patch(
+  '/restaurants/:id/status',
+  isAuth,
+  isAdmin,
+  adminRestaurantController.updateRestaurantStatus,
+);
+
+// DELETE /admin/restaurants/:id
+router.delete(
+  '/restaurants/:id',
+  isAuth,
+  isAdmin,
+  adminRestaurantController.deleteRestaurant,
+);
 
 // GET /admin/reviews
 router.get('/reviews', isAuth, isAdmin, adminReviewController.getAdminReviews);
