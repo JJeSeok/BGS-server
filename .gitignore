@@ -1,4 +1,6 @@
 node_modules/
 .env
 uploads/
-scripts/
+scripts/cleanup_seed.js
+scripts/seed_bgs_test.js
+scripts/seed_reviews.js

@@ -26,6 +26,9 @@ export const config = {
     database: required('DB_DATABASE'),
     password: required('DB_PASSWORD'),
   },
+  upload: {
+    dir: required('UPLOAD_DIR', 'uploads'),
+  },
   port: parseInt(required('PORT', 8080)),
   mailer: {
     user: required('MAIL_USER'),

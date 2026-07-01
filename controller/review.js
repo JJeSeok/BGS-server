@@ -222,11 +222,13 @@ export async function updateReview(req, res) {
   const Rating = Number(rating);
 
   if (!validateRating(Rating)) {
+    await cleanupUploadedReviewFiles(req.files);
     return res
       .status(400)
       .json({ message: '평점은 0~5점까지 0.5점 단위로 입력하세요.' });
   }
   if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    await cleanupUploadedReviewFiles(req.files);
     return res.status(400).json({ message: '리뷰를 입력해주세요.' });
   }
 
@@ -246,6 +248,7 @@ export async function updateReview(req, res) {
       );
 
     if (!review) {
+      await cleanupUploadedReviewFiles(req.files);
       return res
         .status(403)
         .json({ message: '리뷰를 수정할 권한이 없거나 존재하지 않습니다.' });
@@ -261,12 +264,14 @@ export async function updateReview(req, res) {
     return res.sendStatus(204);
   } catch (err) {
     if (err.message === 'MAX_IMAGES_EXCEEDED') {
+      await cleanupUploadedReviewFiles(req.files);
       return res
         .status(400)
-        .json({ message: '이미지는 최대 30장까지 등록할 수 있습니다.' });
+        .json({ message: '이미지는 최대 10장까지 등록할 수 있습니다.' });
     }
 
     console.error(err);
+    await cleanupUploadedReviewFiles(req.files);
     return res
       .status(500)
       .json({ message: '리뷰 수정 중 오류가 발생했습니다.' });

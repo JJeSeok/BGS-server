@@ -288,7 +288,7 @@ export async function updateReviewWithImages(reviewId, userId, payload, files) {
       transaction: t,
     });
     const newCount = (files || []).length;
-    const MAX_IMAGES = 30;
+    const MAX_IMAGES = 10;
 
     if (existingCount + newCount > MAX_IMAGES) {
       throw new Error('MAX_IMAGES_EXCEEDED');

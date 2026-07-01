@@ -10,7 +10,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "seed:users": "node scripts/seedUsers.js",
+    "seed:restaurants": "node scripts/seedRestaurants.js",
+    "seed:engagement": "node scripts/seedEngagement.js",
+    "seed:requests": "node scripts/seedRestaurantRequests.js"
   },
   "repository": {
     "type": "git",

@@ -17,22 +17,6 @@ router.get(
   adminRestaurantController.getAdminRestaurants,
 );
 
-// POST /admin/restaurants
-router.post(
-  '/restaurants',
-  isAuth,
-  isAdmin,
-  adminRestaurantController.createRestaurant,
-);
-
-// PUT /admin/restaurants/:id
-router.put(
-  '/restaurants/:id',
-  isAuth,
-  isAdmin,
-  adminRestaurantController.updateRestaurant,
-);
-
 // PATCH /admin/restaurants/:id/status
 router.patch(
   '/restaurants/:id/status',

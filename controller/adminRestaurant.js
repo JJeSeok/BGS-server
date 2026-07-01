@@ -84,6 +84,7 @@ export async function createRestaurant(req, res) {
   return res.status(201).json(restaurant);
 }
 
+// 관리자 직접 등록/수정을 라우터에 연결할 때 update에서 입력 검증과 수정 가능 필드 화이트리스트를 추가하기
 export async function updateRestaurant(req, res) {
   const restaurantId = req.params.id;
   const updateData = req.body;
@@ -102,7 +103,9 @@ export async function updateRestaurantStatus(req, res) {
   const { status } = req.body;
 
   if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
-    return res.status(400).json({ message: '레스토랑 id가 올바르지 않습니다.' });
+    return res
+      .status(400)
+      .json({ message: '레스토랑 id가 올바르지 않습니다.' });
   }
 
   if (!['active', 'closed'].includes(status)) {

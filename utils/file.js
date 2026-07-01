@@ -1,19 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { config } from '../config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const UPLOADS_REVIEWS_DIR = path.join(__dirname, '..', 'uploads', 'reviews');
-const UPLOADS_PROFILES_DIR = path.join(__dirname, '..', 'uploads', 'profiles');
-const UPLOADS_REQUESTS_DIR = path.join(__dirname, '..', 'uploads', 'requests');
-const UPLOADS_RESTAURANTS_DIR = path.join(
-  __dirname,
-  '..',
-  'uploads',
-  'restaurants',
-);
+const UPLOADS_ROOT_DIR = path.resolve(config.upload.dir);
+const UPLOADS_REVIEWS_DIR = path.join(UPLOADS_ROOT_DIR, 'reviews');
+const UPLOADS_PROFILES_DIR = path.join(UPLOADS_ROOT_DIR, 'profiles');
+const UPLOADS_REQUESTS_DIR = path.join(UPLOADS_ROOT_DIR, 'requests');
+const UPLOADS_RESTAURANTS_DIR = path.join(UPLOADS_ROOT_DIR, 'restaurants');
 
 export function getReviewImageFilePath(url) {
   if (typeof url !== 'string') return null;

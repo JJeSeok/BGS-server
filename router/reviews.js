@@ -6,6 +6,7 @@ import { optionalAuth } from '../middleware/optionalAuth.js';
 import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
+const MAX_REVIEW_IMAGES = 10;
 
 // GET /reviews?restaurantId=:restaurantId
 // GET /reviews?userId=:userId
@@ -21,7 +22,7 @@ router.get('/:id', reviewController.getReview);
 router.post(
   '/',
   isAuth,
-  upload.array('images', 30),
+  upload.array('images', MAX_REVIEW_IMAGES),
   reviewController.createReview,
 );
 
@@ -32,7 +33,7 @@ router.post('/:id/reactions', isAuth, reviewController.toggleReviewReaction);
 router.put(
   '/:id',
   isAuth,
-  upload.array('images', 30),
+  upload.array('images', MAX_REVIEW_IMAGES),
   reviewController.updateReview,
 );
 
