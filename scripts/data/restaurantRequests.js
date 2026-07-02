@@ -11,7 +11,7 @@ export const pendingRequests = [
   {
     seedKey: 'hapjeong-pasta',
     requester: 'seeduser01',
-    sourceImage: 'gangnam-bowl-main.png',
+    sourceImage: 'gangnam-bowl-main.webp',
     name: '합정 골목파스타',
     category: '양식',
     branchInfo: null,
@@ -28,7 +28,7 @@ export const pendingRequests = [
   {
     seedKey: 'suwon-gimbap',
     requester: 'seeduser02',
-    sourceImage: 'seongsu-onban-main.png',
+    sourceImage: 'seongsu-onban-main.webp',
     name: '행궁 한줄김밥',
     category: '분식',
     branchInfo: '행궁점',
@@ -45,7 +45,7 @@ export const pendingRequests = [
   {
     seedKey: 'incheon-jjamppong',
     requester: 'seeduser03',
-    sourceImage: 'eulji-noodle-main.png',
+    sourceImage: 'eulji-noodle-main.webp',
     name: '항구 불짬뽕',
     category: '중식',
     branchInfo: null,
@@ -62,7 +62,7 @@ export const pendingRequests = [
   {
     seedKey: 'jeonju-bibimbap',
     requester: 'seeduser04',
-    sourceImage: 'yeonnam-rice-main.png',
+    sourceImage: 'yeonnam-rice-main.webp',
     name: '느린 비빔밥',
     category: '한식',
     branchInfo: null,
@@ -79,7 +79,7 @@ export const pendingRequests = [
   {
     seedKey: 'jeju-stone-noodle',
     requester: 'seeduser05',
-    sourceImage: 'ttukseom-soba-main.png',
+    sourceImage: 'ttukseom-soba-main.webp',
     name: '돌담 고기국수',
     category: '한식',
     branchInfo: '애월점',
