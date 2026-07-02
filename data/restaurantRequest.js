@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../db/database.js';
+import { Restaurant } from './restaurant.js';
 
 export const RestaurantRequest = sequelize.define(
   'restaurant_request',
@@ -106,6 +107,14 @@ export async function create(restaurant) {
 export async function findMyRequests(userId) {
   return RestaurantRequest.findAll({
     where: { requested_by: userId },
+    include: [
+      {
+        model: Restaurant,
+        as: 'approvedRestaurant',
+        attributes: ['main_image_url'],
+        required: false,
+      },
+    ],
     order: [['createdAt', 'DESC']],
   });
 }

@@ -71,7 +71,19 @@ export async function getMyRestaurantRequests(req, res) {
 
   try {
     const rows = await requestRepository.findMyRequests(userId);
-    return res.status(200).json(rows);
+    const requests = rows.map((row) => {
+      const request = row.toJSON();
+      const approvedRestaurant = request.approvedRestaurant;
+      delete request.approvedRestaurant;
+
+      if (request.status === 'approved') {
+        request.main_image_url = approvedRestaurant?.main_image_url ?? null;
+      }
+
+      return request;
+    });
+
+    return res.status(200).json(requests);
   } catch (err) {
     console.error(err);
     return res

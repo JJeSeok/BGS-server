@@ -95,6 +95,11 @@ RestaurantRequest.belongsTo(User, {
   onDelete: 'SET NULL',
   onUpdate: 'CASCADE',
 });
+RestaurantRequest.belongsTo(Restaurant, {
+  foreignKey: 'approved_restaurant_id',
+  as: 'approvedRestaurant',
+  constraints: false,
+});
 
 RestaurantCohortStat.belongsTo(Restaurant, {
   foreignKey: 'restaurant_id',
