@@ -1,6 +1,13 @@
+# Node
 node_modules/
+
+# Env
 .env
+
+# Image
 uploads/
+
+# Script
 scripts/cleanup_seed.js
 scripts/seed_bgs_test.js
 scripts/seed_reviews.js
