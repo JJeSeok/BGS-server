@@ -82,7 +82,7 @@ app.use((error, req, res, next) => {
 
 scheduleCleanup();
 
-sequelize.sync().then(() => {
+sequelize.authenticate().then(() => {
   console.log(`Server is started... ${new Date()}`);
   app.listen(config.port);
 });

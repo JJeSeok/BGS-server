@@ -397,7 +397,7 @@ npx autocannon -c 10 -d 45 http://localhost:8080/restaurants
 
 ## Remaining Work
 
-- Sequelize migration 도입 및 운영 환경의 `sequelize.sync()` 제거
+- Sequelize migration 도입을 통한 스키마 변경 이력 관리
 - 자동화 테스트와 CI 파이프라인 구축
 - 사용자 업로드 이미지의 WebP 자동 변환 및 썸네일 생성
 - Object Storage와 CDN을 통한 이미지 전달 구조 확장
