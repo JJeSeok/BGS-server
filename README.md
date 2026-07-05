@@ -402,3 +402,4 @@ npx autocannon -c 10 -d 45 http://localhost:8080/restaurants
 - 사용자 업로드 이미지의 WebP 자동 변환 및 썸네일 생성
 - Object Storage와 CDN을 통한 이미지 전달 구조 확장
 - API 명세 자동화(OpenAPI/Swagger)
+- HttpOnly Cookie 기반 인증 구조 검토
