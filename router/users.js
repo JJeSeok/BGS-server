@@ -6,7 +6,10 @@ import { validate } from '../middleware/validator.js';
 import { isAuth } from '../middleware/auth.js';
 import { pwdLimiter } from '../middleware/rate-limiter.js';
 import { uploadProfileImage } from '../middleware/uploadProfileImage.js';
-import { preventDemoAccountMutation } from '../middleware/demoAccount.js';
+import {
+  preventDemoAccountMutation,
+  preventDemoAccountUpload,
+} from '../middleware/demoAccount.js';
 
 const router = express.Router();
 
@@ -323,8 +326,8 @@ router.delete(
 router.put(
   '/me/profile-image',
   isAuth,
-  preventDemoAccountMutation,
   uploadProfileImage.single('image'),
+  preventDemoAccountUpload,
   userController.updateMyProfileImage,
 );
 

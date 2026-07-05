@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 
 function fileFilter(req, file, cb) {
   if (!file.mimetype?.startsWith('image/')) {
-    return cb(new Error('이미지 파일만 업로드할 수 있어요.'));
+    return cb(new Error('ONLY_IMAGE'));
   }
   cb(null, true);
 }
