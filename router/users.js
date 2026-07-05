@@ -6,6 +6,7 @@ import { validate } from '../middleware/validator.js';
 import { isAuth } from '../middleware/auth.js';
 import { pwdLimiter } from '../middleware/rate-limiter.js';
 import { uploadProfileImage } from '../middleware/uploadProfileImage.js';
+import { preventDemoAccountMutation } from '../middleware/demoAccount.js';
 
 const router = express.Router();
 
@@ -304,6 +305,7 @@ router.post('/me/check-password', isAuth, userController.checkMyPassword);
 router.patch(
   '/me',
   isAuth,
+  preventDemoAccountMutation,
   validateUpdateProfile,
   userController.updateMyProfile,
 );
@@ -312,6 +314,7 @@ router.patch(
 router.delete(
   '/me',
   isAuth,
+  preventDemoAccountMutation,
   validateDeleteAccount,
   userController.deleteMyAccount,
 );
@@ -320,12 +323,18 @@ router.delete(
 router.put(
   '/me/profile-image',
   isAuth,
+  preventDemoAccountMutation,
   uploadProfileImage.single('image'),
   userController.updateMyProfileImage,
 );
 
 // DELETE /users/me/profile-image
-router.delete('/me/profile-image', isAuth, userController.deleteMyProfileImage);
+router.delete(
+  '/me/profile-image',
+  isAuth,
+  preventDemoAccountMutation,
+  userController.deleteMyProfileImage,
+);
 
 // POST /users/me/blocks/:blockedUserId
 router.post('/me/blocks/:blockedUserId', isAuth, userController.blockUser);

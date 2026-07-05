@@ -39,4 +39,7 @@ export const config = {
     windowMs: 5 * 60 * 1000,
     limit: 5,
   },
+  demoAccount: {
+    username: required('DEMO_ACCOUNT_USERNAME', 'demouser'),
+  },
 };
